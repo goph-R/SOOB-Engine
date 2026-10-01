@@ -97,11 +97,14 @@ static void codeTrace(const char *fmt, ...)
 #define CODE_COL_IDENT     CODE_RGB(0x8b, 0xe9, 0xfd)
 #define CODE_COL_CODE      CODE_RGB(0x50, 0xfa, 0x7b)
 #define CODE_COL_ERROR     CODE_RGB(0xff, 0x55, 0x55)
-/* Inactive tab caption. Fl_Tabs draws the SELECTED tab's label in the
- * Fl_Tabs' own labelcolor() and every other tab's in that child's labelcolor()
- * (Fl_Tabs.cxx draw_tab), so setting both once is enough -- no tab-change
- * callback needed. 3.67:1 against the inactive tab background, against 13.36:1
- * for the active one, so it reads as clearly subordinate but stays legible. */
+/* Tab row strip (CodeTabs, edit_tabs.h): half-way between the canvas and the
+ * line-number margin, so the row reads as chrome without competing with the
+ * gutter. The active tab is drawn in CODE_COL_BG and merges into the page. */
+#define CODE_COL_TABROW    CODE_RGB(0x30, 0x32, 0x41)
+/* Inactive tab caption. CodeTabs, like Fl_Tabs, draws the SELECTED tab's label
+ * in the tabs widget's own labelcolor() and every other tab's in that child's
+ * labelcolor(), so setting both once is enough -- no tab-change callback
+ * needed. Inactive captions sit straight on CODE_COL_TABROW. */
 #define CODE_COL_TAB_OFF   CODE_RGB(0xa0, 0xa4, 0xb0)
 /* Column ruler. Dpress draws its margin guide in the marker colour, dotted. */
 #define CODE_COL_RULER     CODE_RGB(0x62, 0x72, 0xa4)

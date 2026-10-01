@@ -13,6 +13,11 @@
  * and toggle items line up. Menu-bar titles are left alone. Toggle/radio items
  * keep the normal label type -- FLTK already offsets them.
  *
+ * Checked items: editMenuCheck() swaps an item to a second label type that
+ * also draws a native-style check mark (no box) in that column. Use it on
+ * plain items instead of FL_MENU_TOGGLE / FL_MENU_RADIO, whose box/dot look
+ * nothing like a Windows menu; the caller owns the on/off state.
+ *
  * Call after the menu is fully built (menu() / add()): items added later keep
  * the default label type.
  */
@@ -22,7 +27,8 @@
 #include <FL/Fl_Menu_Item.H>
 #include <FL/fl_draw.H>
 
-#define EDIT_MENUPAD_LABEL FL_FREE_LABELTYPE
+#define EDIT_MENUPAD_LABEL   FL_FREE_LABELTYPE
+#define EDIT_MENUCHECK_LABEL ((Fl_Labeltype)(FL_FREE_LABELTYPE + 1))
 
 /* Width of the toggle column, mirroring Fl_Menu_Item::draw(): a W-wide box
    at x+2, text at x+W+3, where d = (h - FL_NORMAL_SIZE + 1) / 2, W = h - 2d. */
@@ -39,6 +45,28 @@ static void editMenuPadDraw(const Fl_Label *o, int X, int Y, int W, int H,
     fl_font(o->font, o->size);
     fl_color((Fl_Color)o->color);
     fl_draw(o->value, X + pad, Y, W > pad ? W - pad : 0, H, align, o->image);
+}
+
+/* Same as editMenuPadDraw, plus a check mark in the column. Item-relative,
+   the label is drawn at x+3 and FLTK's toggle box at x+2, so the box would
+   sit at X-1; the tick is laid out inside that square. */
+static void editMenuCheckDraw(const Fl_Label *o, int X, int Y, int W, int H,
+                              Fl_Align align)
+{
+    int d  = (H - FL_NORMAL_SIZE + 1) / 2;
+    int s  = H - 2 * d;                 /* square side */
+    int bx = X - 1, by = Y + d;
+    int t  = s / 7;                     /* stroke width, grows with DPI */
+    if (t < 1) t = 1;
+
+    fl_color((Fl_Color)o->color);
+    fl_line_style(FL_SOLID | FL_CAP_ROUND | FL_JOIN_ROUND, t);
+    fl_line(bx + s * 2 / 10, by + s * 5 / 10,
+            bx + s * 4 / 10, by + s * 7 / 10,
+            bx + s * 8 / 10, by + s * 3 / 10);
+    fl_line_style(0);
+
+    editMenuPadDraw(o, X, Y, W, H, align);
 }
 
 static void editMenuPadMeasure(const Fl_Label *o, int &W, int &H)
@@ -60,9 +88,16 @@ static void editMenuPadLevel(Fl_Menu_Item *m)
     }
 }
 
+/* Show or hide an item's check mark (item must be padded, not a toggle). */
+static void editMenuCheck(Fl_Menu_Item *m, int on)
+{
+    m->labeltype(on ? EDIT_MENUCHECK_LABEL : EDIT_MENUPAD_LABEL);
+}
+
 static void editMenuPad(Fl_Menu_ *menu)
 {
     Fl::set_labeltype(EDIT_MENUPAD_LABEL, editMenuPadDraw, editMenuPadMeasure);
+    Fl::set_labeltype(EDIT_MENUCHECK_LABEL, editMenuCheckDraw, editMenuPadMeasure);
     /* Top level = menu-bar titles: unpadded. Their drop-downs: padded. */
     Fl_Menu_Item *m = (Fl_Menu_Item *)menu->menu();
     for (; m && m->text; m = m->next())

@@ -39,6 +39,7 @@
 
 #include "edit_dpi.h"
 #include "edit_menupad.h"
+#include "edit_tabs.h"
 #include "edit_code.h"
 #include "edit_filedlg.h"
 #include "edit_find.h"
@@ -50,7 +51,7 @@
 
 #define MAX_DOCS   16
 #define MENU_H     25
-#define TABROW_H   25
+#define TABROW_H   30         /* tab row incl. the strip above the tabs */
 
 typedef struct CodeDoc {
     CodeEditor *ed;
@@ -62,7 +63,7 @@ typedef struct CodeDoc {
 static CodeDoc          gDocs[MAX_DOCS];
 static int              gDocCount = 0;
 static Fl_Double_Window *gWin;
-static Fl_Tabs          *gTabs;
+static CodeTabs         *gTabs;
 static int              gUntitledSeq = 1;
 static Fl_Double_Window *gFindWin;      /* defined with the Find UI below */
 
@@ -153,12 +154,14 @@ static void refreshLabel(int i)
 }
 
 static void syncWrapItem(void);
+static void syncLangItems(void);
 
 static void labelTimer(void *)
 {
     int i;
     for (i = 0; i < gDocCount; i++) refreshLabel(i);
-    syncWrapItem();               /* the toggle follows the active tab */
+    syncWrapItem();               /* the Word Wrap check follows the active tab */
+    syncLangItems();              /* ...and so does the Language check */
     Fl::repeat_timeout(0.4, labelTimer);
 }
 
@@ -382,8 +385,7 @@ static void syncWrapItem(void)
     if (!gMenuBar) return;
     it = (Fl_Menu_Item *)gMenuBar->find_item(cbWrap);
     if (!it) return;
-    if (i >= 0 && gDocs[i].ed->wrapped()) it->set();
-    else                                  it->clear();
+    editMenuCheck(it, i >= 0 && gDocs[i].ed->wrapped());
 }
 
 static void cbWrap(Fl_Widget *, void *)
@@ -418,6 +420,22 @@ static void cbLang(Fl_Widget *w, void *v)
     int i = currentIndex();
     (void)w;
     if (i >= 0) gDocs[i].ed->language((int)(long)v);
+    syncLangItems();
+}
+
+/* Language is per document too: check the active tab's language. The four
+ * items are one contiguous run with user_data = LEX_LANG_*. Also catches
+ * language changes the menu never saw (Save As with a new suffix). */
+static void syncLangItems(void)
+{
+    Fl_Menu_Item *it;
+    int i = currentIndex();
+    int lang = i >= 0 ? gDocs[i].ed->language() : -1;
+    if (!gMenuBar) return;
+    it = (Fl_Menu_Item *)gMenuBar->find_item(cbLang);   /* first of the run */
+    for (; it && it->text && it->callback() == cbLang; it = it->next()) {
+        editMenuCheck(it, (int)(long)it->user_data() == lang);
+    }
 }
 
 /* ---- Find / Replace ----------------------------------------------------
@@ -600,13 +618,13 @@ static Fl_Menu_Item gMenu[] = {
         /* Alt+Z, not Ctrl+Shift+W: Fl::test_shortcut() only requires META/ALT/
          * CTRL to match exactly and treats SHIFT loosely, so a Ctrl+Shift+W
          * binding lives dangerously next to Ctrl+W (Close). Alt is strict. */
-        { "&Word Wrap", FL_ALT + 'z', cbWrap, 0, FL_MENU_TOGGLE },
+        { "&Word Wrap", FL_ALT + 'z', cbWrap },
         { "Wrap at &Column...", 0, cbWrapCol },
         { 0 },
     { "&Language", 0, 0, 0, FL_SUBMENU },
-        { "Plain text", 0, cbLang, (void *)LEX_LANG_TEXT     },
-        { "Pascal",     0, cbLang, (void *)LEX_LANG_PASCAL   },
-        { "Lua",        0, cbLang, (void *)LEX_LANG_LUA      },
+        { "Plain text", 0, cbLang, (void *)LEX_LANG_TEXT },
+        { "Pascal",     0, cbLang, (void *)LEX_LANG_PASCAL },
+        { "Lua",        0, cbLang, (void *)LEX_LANG_LUA },
         { "Markdown",   0, cbLang, (void *)LEX_LANG_MARKDOWN },
         { 0 },
     { 0 }
@@ -680,12 +698,12 @@ int main(int argc, char **argv)
         gMenuBar->menu(gMenu);
         editMenuPad(gMenuBar);
 
-        gTabs = new Fl_Tabs(0, MENU_H, 760, 560 - MENU_H);
-        /* Active tab: background merges into the editor below it, white label.
-         * Inactive tabs: Fl_Tabs uses the CHILD's selection_color() as their
-         * background -- which CodeEditor already sets to CODE_COL_SEL for text
-         * selection -- and the child's labelcolor() for the caption. */
-        gTabs->color(CODE_COL_BG);
+        gTabs = new CodeTabs(0, MENU_H, 760, 560 - MENU_H);
+        /* Flat, borderless tabs (edit_tabs.h): the row strip in color(), the
+         * active tab in selection_color() -- the editor background, so it
+         * merges into the page below -- with a white label. Inactive tabs are
+         * bare captions in the child's labelcolor(). */
+        gTabs->color(CODE_COL_TABROW);
         gTabs->selection_color(CODE_COL_BG);
         gTabs->labelcolor(CODE_COL_FG);
         gTabs->end();
