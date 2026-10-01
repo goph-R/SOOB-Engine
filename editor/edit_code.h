@@ -141,6 +141,15 @@ static Fl_Text_Display::Style_Table_Entry codeStyleTable[LEX_NSTYLES] = {
     /* M EM        */ { CODE_COL_STRING,  FL_COURIER_ITALIC, CODE_FONTSIZE, 0 }
 };
 
+/* Indent width in spaces: what Tab inserts, Shift+Tab removes, and a '{' at
+ * the end of a line adds. Also the display width of a literal tab character.
+ * Runtime so a settings window can change it later; set it before the first
+ * CodeEditor is constructed. */
+#ifndef CODE_INDENT
+#define CODE_INDENT 4
+#endif
+static int codeIndent = CODE_INDENT;
+
 /* Runtime code font size -- CODE_FONTSIZE scaled for the display. Set it with
  * codeSetFontSize() BEFORE the first CodeEditor is constructed; existing
  * editors keep the size they were built with. */
@@ -508,6 +517,7 @@ public:
         mStyleBuf = new Fl_Text_Buffer();
 
         buffer(mTextBuf);
+        mTextBuf->tab_distance(codeIndent);
         wrap_mode(WRAP_NONE, 0);
         textfont(CODE_FONT);
         textsize(codeFontSize);
@@ -734,6 +744,24 @@ public:
                 if (k == 'z') { if (st & FL_SHIFT) redo(); else undo(); caretRestart(); return 1; }
                 if (k == 'y') { redo(); caretRestart(); return 1; }
             }
+            if (!(st & (FL_CTRL | FL_ALT | FL_META))) {
+                if (k == FL_Enter || k == FL_KP_Enter) {
+                    indentNewline(); caretRestart(); return 1;
+                }
+                if (k == FL_Tab) {
+                    if (st & FL_SHIFT) shiftLines(-1); else indentTab();
+                    caretRestart(); return 1;
+                }
+            }
+            /* By the character, not the key: '}' is AltGr+B on a Hungarian
+             * layout, which Windows reports as Ctrl+Alt. */
+            if (Fl::event_length() == 1 && Fl::event_text()[0] == '}' &&
+                closeBraceIndent()) {
+                r = Fl_Text_Editor::handle(e);      /* types the brace */
+                endUndoGroup();
+                caretRestart();
+                return r;
+            }
         }
         r = Fl_Text_Editor::handle(e);
         switch (e) {
@@ -745,6 +773,160 @@ public:
             break;
         }
         return r;
+    }
+
+    /* ---- indentation -----------------------------------------------------
+     * Enter keeps the current line's indent, plus one level after a line
+     * ending in '{'. Tab inserts spaces to the next indent stop; with a
+     * selection spanning lines, Tab / Shift+Tab indent / outdent every line.
+     * Typing '}' on an otherwise blank line re-indents it to the line holding
+     * the matching '{'. Braces inside comments and strings (per the style
+     * buffer) are ignored -- which also keeps Pascal's { comments } inert.
+     * Every edit is one undo group. */
+    char ch(int p) const
+    {
+        return (p >= 0 && p < mTextBuf->length()) ? mTextBuf->byte_at(p) : 0;
+    }
+    int inCommentOrString(int p) const
+    {
+        int slot = mStyleBuf->byte_at(p) - 'A';
+        return slot == LEX_COMMENT || slot == LEX_STRING || slot == LEX_DIRECTIVE;
+    }
+    int indentEnd(int ls) const       /* first non-blank at/after line start */
+    {
+        while (ch(ls) == ' ' || ch(ls) == '\t') ls++;
+        return ls;
+    }
+    void killSelection()
+    {
+        int s, e;
+        if (mTextBuf->selection_position(&s, &e)) {
+            mTextBuf->remove_selection();
+            insert_position(s);
+        }
+    }
+    static void spaces(char *buf, int n)   /* buf: at least 64 bytes */
+    {
+        if (n > 63) n = 63;
+        memset(buf, ' ', n);
+        buf[n] = '\0';
+    }
+
+    void indentNewline()
+    {
+        int pos, ls, we, p, open;
+        char *ind, pad[64];
+        beginUndoGroup();
+        killSelection();
+        pos = insert_position();
+        ls  = mTextBuf->line_start(pos);
+        we  = indentEnd(ls);
+        if (we > pos) we = pos;           /* Enter inside the indent keeps what is left of it */
+        p = pos;
+        while (p > ls && (ch(p - 1) == ' ' || ch(p - 1) == '\t')) p--;
+        open = p > ls && ch(p - 1) == '{' && !inCommentOrString(p - 1);
+        ind = mTextBuf->text_range(ls, we);
+        insert("\n");
+        insert(ind);
+        free(ind);
+        if (open) { spaces(pad, codeIndent); insert(pad); }
+        endUndoGroup();
+        show_insert_position();
+    }
+
+    void indentTab()
+    {
+        int s, e, pos, col;
+        char pad[64];
+        if (mTextBuf->selection_position(&s, &e) &&
+            mTextBuf->line_start(s) != mTextBuf->line_start(e)) {
+            shiftLines(1);
+            return;
+        }
+        beginUndoGroup();
+        killSelection();
+        pos = insert_position();
+        col = mTextBuf->count_displayed_characters(mTextBuf->line_start(pos), pos);
+        spaces(pad, codeIndent - col % codeIndent);
+        insert(pad);
+        endUndoGroup();
+        show_insert_position();
+    }
+
+    /* dir > 0: indent, dir < 0: outdent -- the selected lines, or the caret's
+     * line without a selection. A selection ending at column 0 does not take
+     * that last line along. Outdent removes one tab or up to codeIndent spaces. */
+    void shiftLines(int dir)
+    {
+        int s, e, sel, first, last, n, i, ls, k, pos, firstCut = 0;
+        char pad[64];
+        sel = mTextBuf->selection_position(&s, &e);
+        pos = insert_position();
+        if (!sel) s = e = pos;
+        first = mTextBuf->line_start(s);
+        last  = mTextBuf->line_start(e);
+        if (sel && last == e && last > first) last = mTextBuf->line_start(e - 1);
+        n = mTextBuf->count_lines(first, last) + 1;
+
+        beginUndoGroup();
+        for (i = 0, ls = first; i < n; i++) {
+            if (dir > 0) {
+                if (mTextBuf->line_end(ls) > ls) {        /* leave blank lines blank */
+                    spaces(pad, codeIndent);
+                    mTextBuf->insert(ls, pad);
+                }
+            } else {
+                k = 0;
+                if (ch(ls) == '\t') k = 1;
+                else while (k < codeIndent && ch(ls + k) == ' ') k++;
+                if (k) mTextBuf->remove(ls, ls + k);
+                if (i == 0) firstCut = k;
+            }
+            ls = mTextBuf->line_end(ls) + 1;
+        }
+        endUndoGroup();
+
+        if (sel && n > 1) {                /* keep the block selected, whole lines */
+            int end = mTextBuf->line_end(mTextBuf->line_start(ls - 1));
+            mTextBuf->select(first, end);
+            insert_position(end);
+        } else if (dir < 0) {              /* single line: caret follows its text */
+            mTextBuf->unselect();
+            insert_position(pos - first >= firstCut ? pos - firstCut : first);
+        }
+        show_insert_position();
+    }
+
+    /* '}' about to be typed: if the line is blank, give it the indent of the
+     * line with the matching '{'. Returns 1 with an undo group OPEN (the
+     * caller closes it after the brace is inserted), 0 if nothing changed. */
+    int closeBraceIndent()
+    {
+        int pos, ls, le, p, depth = 0, target = -1, tls;
+        char *ind, *cur;
+        if (mTextBuf->selected()) return 0;
+        pos = insert_position();
+        ls  = mTextBuf->line_start(pos);
+        le  = mTextBuf->line_end(pos);
+        for (p = ls; p < le; p++)
+            if (ch(p) != ' ' && ch(p) != '\t') return 0;
+        for (p = ls - 1; p >= 0; p--) {
+            char c = ch(p);
+            if ((c != '{' && c != '}') || inCommentOrString(p)) continue;
+            if (c == '}') depth++;
+            else if (depth == 0) { target = p; break; }
+            else depth--;
+        }
+        if (target < 0) return 0;
+        tls = mTextBuf->line_start(target);
+        ind = mTextBuf->text_range(tls, indentEnd(tls));
+        cur = mTextBuf->text_range(ls, le);
+        if (strcmp(ind, cur) == 0) { free(ind); free(cur); return 0; }
+        beginUndoGroup();
+        mTextBuf->replace(ls, le, ind);
+        insert_position(ls + (int)strlen(ind));
+        free(ind); free(cur);
+        return 1;
     }
 
     /* ---- caret ----------------------------------------------------------
