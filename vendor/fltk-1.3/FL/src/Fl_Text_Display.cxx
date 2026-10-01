@@ -168,6 +168,7 @@ Fl_Text_Display::Fl_Text_Display(int X, int Y, int W, int H, const char* l)
   mLineNumLeft = mLineNumWidth = 0;
   mContinuousWrap = 0;
   mWrapMarginPix = 0;
+  mSoobLineNumTop = -1;      /* SOOB Win98 patch: see draw() */
   mSuppressResync = mNLinesDeleted = mModifyingTabDistance = 0;
 #if FLTK_ABI_VERSION >= 10303
   linenumber_font_    = FL_HELVETICA;
@@ -3813,7 +3814,28 @@ void Fl_Text_Display::draw(void) {
 
   // Important to do this at end of this method, otherwise line numbers
   // will not scroll with the text edit area
-  draw_line_numbers(true);
+  //
+  // SOOB Win98 patch (NOT upstream FLTK): upstream calls this unconditionally.
+  // STR #2621 moved it out of the damage-gated branches above (see the commented
+  // -out call in the FL_DAMAGE_ALL branch) because gating it on damage broke
+  // scrolling. The blunt consequence is that EVERY draw() repaints the whole
+  // margin -- one fl_rectf over its full height plus an fl_draw per visible row
+  // -- so every keystroke redraws every line number. On a Pentium II that is
+  // plainly visible.
+  //
+  // The digits can only change when the top visible line number changes, so
+  // gate on exactly that, plus the damage bits that mean the margin's own pixels
+  // were clobbered (full redraw / expose). Scrolling by any means -- wheel,
+  // scrollbar drag, cursor walking off an edge -- moves mTopLineNum and so still
+  // repaints. get_absolute_top_line_number() is O(1) (it returns mTopLineNum
+  // outright when wrapping is off), so this gate is free.
+  {
+    int soobTop = get_absolute_top_line_number();
+    if ((damage() & (FL_DAMAGE_ALL | FL_DAMAGE_EXPOSE)) || soobTop != mSoobLineNumTop) {
+      mSoobLineNumTop = soobTop;
+      draw_line_numbers(true);
+    }
+  }
     
   fl_pop_clip();
 }

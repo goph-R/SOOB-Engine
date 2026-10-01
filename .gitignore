@@ -11,6 +11,8 @@ raw/obj/
 # fltk_gl.list) stay tracked; only the built .a output is ignored.
 # (FLTK object files land in raw/obj/fltk/, already covered by raw/obj/.)
 vendor/fltk-1.3/FL/lib/
+# Win10 (WinLibs) FLTK libs from build_fltk_win10.bat.
+vendor/fltk-1.3/FL/lib_w10/
 
 # Engine Lua modules copied from ../SOOB-Core/ at build time.
 # Source of truth lives in SOOB-Core; this dir is regenerated on each build.
@@ -21,6 +23,7 @@ output.txt
 stdout.txt
 stderr.txt
 build_fltk_output.txt
+codeedit.log
 
 # Runtime + editor output written next to the exe. Anchored to the repo root
 # so they never shadow the tracked level data under assets/levels/.

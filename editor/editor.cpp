@@ -54,6 +54,8 @@
 #include <FL/fl_ask.H>
 #include <FL/Fl_File_Chooser.H>
 #include <FL/gl.h>
+#include "edit_dpi.h"
+#include "edit_menupad.h"
 
 #include <cstdio>
 #include <cstdarg>
@@ -422,7 +424,7 @@ public:
 
         /* Unselected verts (vertex mode only), depth-tested. */
         if (sel.mode == SEL_VERT) {
-            glPointSize(4.0f);
+            glPointSize(4.0f * editDpiScale);
             glColor3f(0.1f, 0.1f, 0.1f);
             glBegin(GL_POINTS);
             for (int i = 0; i < emesh.numVerts; i++) {
@@ -460,7 +462,7 @@ public:
             glEnable(GL_CULL_FACE);
             glDisable(GL_BLEND);
         } else if (sel.mode == SEL_EDGE) {
-            glLineWidth(3.0f);
+            glLineWidth(3.0f * editDpiScale);
             glColor3f(1.0f, 0.6f, 0.1f);
             glBegin(GL_LINES);
             for (int i = 0; i < sel.numEdges; i++) {
@@ -473,7 +475,7 @@ public:
             glEnd();
             glLineWidth(1.0f);
         } else if (sel.mode == SEL_VERT) {
-            glPointSize(8.0f);
+            glPointSize(8.0f * editDpiScale);
             glColor3f(1.0f, 0.6f, 0.1f);
             glBegin(GL_POINTS);
             for (int i = 0; i < emesh.numVerts; i++) {
@@ -511,7 +513,7 @@ public:
         /* Origin axis gizmo: X red, Y green, Z blue. Drawn on top (no depth)
            so it's always visible as a reference. */
         glDisable(GL_DEPTH_TEST);
-        glLineWidth(2.0f);
+        glLineWidth(2.0f * editDpiScale);
         glBegin(GL_LINES);
         glColor3f(1.0f, 0.25f, 0.25f); glVertex3f(0,0,0); glVertex3f(2.0f,0,0);
         glColor3f(0.25f, 1.0f, 0.25f); glVertex3f(0,0,0); glVertex3f(0,2.0f,0);
@@ -556,7 +558,7 @@ public:
             if (!e->active) continue;
             int on = entSel[i];
             float s = on ? 0.40f : 0.25f;
-            if (on) { glLineWidth(2.5f); glColor3f(1.0f, 0.6f, 0.1f); }
+            if (on) { glLineWidth(2.5f * editDpiScale); glColor3f(1.0f, 0.6f, 0.1f); }
             else    { glLineWidth(1.0f); glColor3f(0.55f, 0.8f, 1.0f); }
             float x = e->posX, y = e->posY, z = e->posZ;
             glBegin(GL_LINES);                          /* 3-axis cross */
@@ -573,7 +575,7 @@ public:
                 float mxc = lr > lg ? lr : lg; if (lb > mxc) mxc = lb;
                 if (mxc < 0.25f) { lr += 0.25f; lg += 0.25f; lb += 0.25f; }  /* stay visible */
                 glColor3f(lr, lg, lb);
-                glLineWidth(on ? 2.0f : 1.0f);
+                glLineWidth(on ? 2.0f * editDpiScale : 1.0f);
                 drawWireSphere(x, y, z, e->light.radius, 24);
             }
         }
@@ -661,11 +663,11 @@ public:
         PickCam pc;
         buildPickCam(&pc);
         if (sel.mode == SEL_VERT) {
-            int idx = editPickVertex(&pc, &emesh, mx, my, 8.0f);
+            int idx = editPickVertex(&pc, &emesh, mx, my, 8.0f * editDpiScale);
             if (!additive) editSelClearActive(&sel);
             if (idx >= 0) sel.vertSel[idx] = additive ? !sel.vertSel[idx] : 1;
         } else if (sel.mode == SEL_EDGE) {
-            int idx = editPickEdge(&pc, &emesh, sel.edges, sel.numEdges, mx, my, 8.0f);
+            int idx = editPickEdge(&pc, &emesh, sel.edges, sel.numEdges, mx, my, 8.0f * editDpiScale);
             if (!additive) editSelClearActive(&sel);
             if (idx >= 0) sel.edgeSel[idx] = additive ? !sel.edgeSel[idx] : 1;
         } else if (sel.mode == SEL_FACE) {
@@ -673,7 +675,7 @@ public:
             if (!additive) editSelClearActive(&sel);
             if (idx >= 0) sel.faceSel[idx] = additive ? !sel.faceSel[idx] : 1;
         } else { /* SEL_ENTITY */
-            int idx = pickEntity(&pc, mx, my, 12.0f);
+            int idx = pickEntity(&pc, mx, my, 12.0f * editDpiScale);
             if (!additive) memset(entSel, 0, sizeof(entSel));
             if (idx >= 0) entSel[idx] = additive ? !entSel[idx] : 1;
         }
@@ -1781,6 +1783,10 @@ static int editPickGlMode(Fl_Gl_Window *view)
 
 int main(int argc, char **argv)
 {
+    /* First: DPI awareness must be declared before FLTK opens the display.
+       UI font is 12 px at 96 DPI (FLTK default is 14), scaled for the display. */
+    editDpiInit(12);
+
     Fl::error = editFlMsg;
     Fl::warning = editFlMsg;
     Fl::fatal = editFlFatal;
@@ -1790,7 +1796,6 @@ int main(int argc, char **argv)
        never does -- Fl_Gl_Window carries its own mode. Worse, it made the
        depth buffer an app-wide assumption that nothing verified. The mode is
        now negotiated per-window in editPickGlMode below. */
-    FL_NORMAL_SIZE = 12;               /* UI font: 12 px (FLTK default is 14) */
 
     const int W = 1024, H = 768;
     const int MB = 25;                 /* menu-bar height */
@@ -1813,10 +1818,10 @@ int main(int argc, char **argv)
     Fl_Button *bEdge = new Fl_Button(40, MB + 3, 34, TB - 6);
     Fl_Button *bFace = new Fl_Button(76, MB + 3, 34, TB - 6);
     Fl_Button *bEnt  = new Fl_Button(112, MB + 3, 34, TB - 6);
-    bVert->image(new Fl_Pixmap(mode_vert_xpm)); bVert->type(FL_RADIO_BUTTON);
-    bEdge->image(new Fl_Pixmap(mode_edge_xpm)); bEdge->type(FL_RADIO_BUTTON);
-    bFace->image(new Fl_Pixmap(mode_face_xpm)); bFace->type(FL_RADIO_BUTTON);
-    bEnt->image(new Fl_Pixmap(mode_entity_xpm)); bEnt->type(FL_RADIO_BUTTON);
+    bVert->image(editDpiImage(new Fl_Pixmap(mode_vert_xpm))); bVert->type(FL_RADIO_BUTTON);
+    bEdge->image(editDpiImage(new Fl_Pixmap(mode_edge_xpm))); bEdge->type(FL_RADIO_BUTTON);
+    bFace->image(editDpiImage(new Fl_Pixmap(mode_face_xpm))); bFace->type(FL_RADIO_BUTTON);
+    bEnt->image(editDpiImage(new Fl_Pixmap(mode_entity_xpm))); bEnt->type(FL_RADIO_BUTTON);
     bVert->tooltip("Vertex select (1)");
     bEdge->tooltip("Edge select (2)");
     bFace->tooltip("Face select (3)");
@@ -1989,6 +1994,7 @@ int main(int argc, char **argv)
     if (argc > 2) view->entPath = argv[2];
 
     win->end();
+    editDpiScaleTree(win);             /* layout above is in 96-DPI pixels */
     win->resizable(view);              /* only the viewport grows/shrinks */
 
     /* Wire the toolbar buttons to the view, then light the initial mode. */
@@ -2068,6 +2074,7 @@ int main(int argc, char **argv)
     menu->add("Mesh/Recalc Normals",  'n',       menuRecalcCb,   view);
     menu->add("Mesh/Merge Verts",     'm',       menuMergeCb,    view);
     menu->add("Mesh/Delete",          FL_Delete, menuDeleteCb,   view);
+    editMenuPad(menu);                     /* last: add() may reallocate the items */
 
     win->callback(winCloseCb);             /* confirm on the window close button too */
 
@@ -2082,7 +2089,7 @@ int main(int argc, char **argv)
     /* Boot splash: a frameless window (logo + status line) centred on screen,
        shown while the main window's heavy first-frame load runs. Sized to the
        image; the status line overlays its bottom strip. */
-    Fl_Pixmap *splashPix = new Fl_Pixmap(splash_xpm);
+    Fl_Image *splashPix = editDpiImage(new Fl_Pixmap(splash_xpm));
     int sw = splashPix->w(), sh = splashPix->h();
     gSplash = new Fl_Window((Fl::w() - sw) / 2, (Fl::h() - sh) / 2, sw, sh);
     gSplash->border(0);
@@ -2090,11 +2097,11 @@ int main(int argc, char **argv)
         Fl_Box *splashImg = new Fl_Box(0, 0, sw, sh);
         splashImg->box(FL_NO_BOX);
         splashImg->image(splashPix);
-        gSplashText = new Fl_Box(0, sh - 28, sw, 22);
+        gSplashText = new Fl_Box(0, sh - editDpi(28), sw, editDpi(22));
         gSplashText->box(FL_NO_BOX);   /* label only, no fill over the image */
         gSplashText->align(FL_ALIGN_INSIDE | FL_ALIGN_CENTER);
         gSplashText->labelfont(FL_HELVETICA_BOLD);
-        gSplashText->labelsize(12);
+        gSplashText->labelsize(editDpi(12));
         gSplashText->labelcolor(FL_WHITE);
         gSplashText->copy_label("Starting...");
     gSplash->end();

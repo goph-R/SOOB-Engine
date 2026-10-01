@@ -35,6 +35,7 @@
 #  include <unistd.h>
 # else
 #  include  <direct.h>
+#  include <sys/stat.h>   /* SOOB Win98 patch: stat() for the 9x branch of fl_stat */
 # endif
 extern "C" {
   int XUtf8Tolower(int ucs);
@@ -449,6 +450,35 @@ char *fl_getenv(const char* v) {
 } // fl_getenv()
 
 
+/* --- SOOB Win98 patch (NOT upstream FLTK) -------------------------------
+   Every file/path helper below funnels through a _w* CRT call (_wfopen,
+   _wopen, _wstat, ...).  Windows 95/98/ME implement those as stubs that fail,
+   so on Win98 fl_fopen() returned NULL for EVERY path and Fl_Text_Buffer::
+   insertfile() reported "could not open" for files that plainly existed.
+
+   Same class of bug as the CreateWindowExW issue in docs/editor-fltk-win98.md:
+   FLTK 1.3 assumes the Unicode entry points exist.  The fix is the same shape
+   too -- detect the platform once at runtime and take the ANSI path there, so
+   one binary still works correctly on NT.
+
+   On 9x the ANSI call is also the *correct* one: that platform's filesystem is
+   ANSI/codepage-based, and FLTK's UTF-8 strings are byte-identical to ANSI for
+   the ASCII paths these builds use.
+
+   Re-apply if FLTK is ever upgraded. */
+static int fl_win98_is_9x(void)
+{
+  static int cached = -1;
+  if (cached < 0) {
+    OSVERSIONINFOA osv;
+    osv.dwOSVersionInfoSize = sizeof(osv);   /* the only field GetVersionExA needs */
+    cached = (GetVersionExA(&osv) &&
+              osv.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) ? 1 : 0;
+  }
+  return cached;
+}
+/* --- end SOOB Win98 patch ---------------------------------------------- */
+
 /** Cross-platform function to open files with a UTF-8 encoded name.
 
  This function is especially useful under the MSWindows platform where the
@@ -467,6 +497,9 @@ int fl_open(const char* f, int oflags, ...)
   va_end(ap);
 
 #if defined (WIN32) && !defined(__CYGWIN__)
+
+  if (fl_win98_is_9x())                       /* SOOB Win98: no wide CRT */
+    return (pmode == -1) ? _open(f, oflags) : _open(f, oflags, pmode);
 
   unsigned l = (unsigned) strlen(f);
   unsigned wn = fl_utf8toUtf16(f, l, NULL, 0) + 1; // Query length
@@ -498,6 +531,8 @@ int fl_open(const char* f, int oflags, ...)
 FILE *fl_fopen(const char* f, const char *mode) {
 
 #if  defined (WIN32) && !defined(__CYGWIN__)
+
+  if (fl_win98_is_9x()) return fopen(f, mode);          /* SOOB Win98 */
 
   size_t l = strlen(f);
   unsigned wn = fl_utf8toUtf16(f, (unsigned) l, NULL, 0) + 1; // Query length
@@ -640,6 +675,8 @@ int fl_access(const char* f, int mode) {
 
 #if defined (WIN32) && !defined(__CYGWIN__) // Windows
 
+  if (fl_win98_is_9x()) return _access(f, mode);        /* SOOB Win98 */
+
   size_t l = strlen(f);
   unsigned wn = fl_utf8toUtf16(f, (unsigned) l, NULL, 0) + 1; // Query length
   wbuf = (xchar*)realloc(wbuf, sizeof(xchar)*wn);
@@ -669,6 +706,8 @@ int fl_access(const char* f, int mode) {
 int fl_stat(const char* f, struct stat *b) {
 
 #if defined(WIN32) && !defined(__CYGWIN__) // Windows
+
+  if (fl_win98_is_9x()) return stat(f, b);               /* SOOB Win98 */
 
   size_t l = strlen(f);
   unsigned wn = fl_utf8toUtf16(f, (unsigned) l, NULL, 0) + 1; // Query length
@@ -703,6 +742,8 @@ char *fl_getcwd(char* b, int l) {
   }
 
 #if defined(WIN32) && !defined(__CYGWIN__) // Windows
+
+  if (fl_win98_is_9x()) return _getcwd(b, l);           /* SOOB Win98 */
 
   static xchar *wbuf = NULL;
   wbuf = (xchar*)realloc(wbuf, sizeof(xchar) * (l+1));
@@ -739,6 +780,8 @@ int fl_unlink(const char* f) {
 
 #if defined(WIN32) && !defined(__CYGWIN__) // Windows
 
+  if (fl_win98_is_9x()) return _unlink(f);              /* SOOB Win98 */
+
   size_t l = strlen(f);
   unsigned wn = fl_utf8toUtf16(f, (unsigned) l, NULL, 0) + 1; // Query length
   wbuf = (xchar*)realloc(wbuf, sizeof(xchar)*wn);
@@ -769,6 +812,8 @@ int fl_mkdir(const char* f, int mode) {
 
 #if defined(WIN32) && !defined(__CYGWIN__) // Windows
 
+  if (fl_win98_is_9x()) return _mkdir(f);               /* SOOB Win98 */
+
   size_t l = strlen(f);
   unsigned wn = fl_utf8toUtf16(f, (unsigned) l, NULL, 0) + 1; // Query length
   wbuf = (xchar*)realloc(wbuf, sizeof(xchar)*wn);
@@ -797,6 +842,8 @@ int fl_mkdir(const char* f, int mode) {
 int fl_rmdir(const char* f) {
 
 #if defined (WIN32) && !defined(__CYGWIN__) // Windows
+
+  if (fl_win98_is_9x()) return _rmdir(f);               /* SOOB Win98 */
 
   size_t l = strlen(f);
   unsigned wn = fl_utf8toUtf16(f, (unsigned) l, NULL, 0) + 1; // Query length
@@ -827,6 +874,8 @@ int fl_rmdir(const char* f) {
 int fl_rename(const char* f, const char *n) {
 
 #if defined (WIN32) && !defined(__CYGWIN__) // Windows
+
+  if (fl_win98_is_9x()) return rename(f, n);            /* SOOB Win98 */
 
   size_t l = strlen(f);
   unsigned wn = fl_utf8toUtf16(f, (unsigned) l, NULL, 0) + 1; // Query length

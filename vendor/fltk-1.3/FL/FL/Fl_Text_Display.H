@@ -534,6 +534,11 @@ protected:
   Fl_Align    linenumber_align_;
   const char* linenumber_format_;
 #endif
+
+  /* SOOB Win98 patch (NOT upstream FLTK): last top-line number painted into the
+     line-number margin, used by draw() to skip repainting a margin whose digits
+     cannot have changed. -1 = never painted. See the note in draw(). */
+  int mSoobLineNumTop;
 };
 
 #endif
