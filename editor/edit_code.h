@@ -117,6 +117,10 @@ static void codeTrace(const char *fmt, ...)
 #ifndef CODE_FONT
 #define CODE_FONT FL_COURIER
 #endif
+/* Caret blink half-period in seconds (Windows' default caret blink is 530 ms). */
+#ifndef CODE_CARET_BLINK
+#define CODE_CARET_BLINK 0.53
+#endif
 
 /* Order MUST match the LEX_* slot enum in edit_lex.h.  Courier New's bold and
  * italic faces share the regular advance width, so mixing them here does not
@@ -513,6 +517,8 @@ public:
         textcolor(CODE_COL_FG);
         cursor_color(CODE_COL_FG);
         selection_color(CODE_COL_SEL);
+        show_cursor(0);             /* FLTK's caret off -- draw() paints ours */
+        mCaretOn = 0;
 
         linenumber_width(48 * codeFontSize / CODE_FONTSIZE);   /* 48 px at the default size */
         linenumber_font(CODE_FONT);
@@ -541,6 +547,7 @@ public:
     ~CodeEditor()
     {
         codeTrace("  ~CodeEditor %p enter", (void *)this);
+        Fl::remove_timeout(caretBlinkCb, this);   /* it holds a raw `this` */
         mTextBuf->remove_modify_callback(staticModifyCb, this);
         codeTrace("  ~CodeEditor removed modify cb");
         /* buffer(0) is NULL-safe and detaches the display's own callbacks.
@@ -626,6 +633,7 @@ public:
     {
         int x;
         Fl_Text_Editor::draw();
+        caretDraw();
         if (mWrapCol <= 0) return;
 
         x = text_area.x + wrapPixels() - mHorizOffset;
@@ -702,18 +710,85 @@ public:
     void clearDirty() { mDirty = 0; }
 
     /* Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, intercepted before Fl_Text_Editor's own
-     * key bindings so its kf_undo (which drives FLTK's dead undo) never runs. */
+     * key bindings so its kf_undo (which drives FLTK's dead undo) never runs.
+     * Any key or click also restarts the caret blink, so the caret is always
+     * solid while you type or move it -- the way native editors behave. */
     int handle(int e)
     {
+        int r;
         if (e == FL_KEYBOARD) {
             int st = Fl::event_state();
             int k  = Fl::event_key();
             if (st & FL_CTRL) {
-                if (k == 'z') { if (st & FL_SHIFT) redo(); else undo(); return 1; }
-                if (k == 'y') { redo(); return 1; }
+                if (k == 'z') { if (st & FL_SHIFT) redo(); else undo(); caretRestart(); return 1; }
+                if (k == 'y') { redo(); caretRestart(); return 1; }
             }
         }
-        return Fl_Text_Editor::handle(e);
+        r = Fl_Text_Editor::handle(e);
+        switch (e) {
+        case FL_FOCUS: case FL_KEYBOARD: case FL_PUSH: case FL_DRAG:
+            caretRestart();
+            break;
+        case FL_UNFOCUS:
+            caretStop();
+            break;
+        }
+        return r;
+    }
+
+    /* ---- caret ----------------------------------------------------------
+     * FLTK 1.3's cursors cannot blink and have no underscore shape, and
+     * Fl_Text_Display::draw_cursor() is not virtual. So FLTK's own caret stays
+     * off (show_cursor(0) in the constructor; Fl_Text_Editor only ever
+     * re-applies that stored state) and draw() paints ours on top of the text:
+     * a thin bar in insert mode, an underscore in overwrite mode (the Insert
+     * key toggles Fl_Text_Editor::insert_mode()).
+     *
+     * Blinking repaints only the caret's line: redisplay_range() makes
+     * Fl_Text_Display redraw that line -- wiping the old caret -- and draw()
+     * then paints it again if it is in its "on" phase. Moving the caret is
+     * covered already: insert_position() redisplays the old and new lines. */
+    void caretRedisplay()
+    {
+        int p = insert_position();
+        redisplay_range(mTextBuf->prev_char_clipped(p), mTextBuf->next_char(p));
+    }
+    void caretRestart()           /* solid now, blink from here */
+    {
+        Fl::remove_timeout(caretBlinkCb, this);
+        mCaretOn = 1;
+        if (Fl::focus() == this) Fl::add_timeout(CODE_CARET_BLINK, caretBlinkCb, this);
+        caretRedisplay();
+    }
+    void caretStop()
+    {
+        Fl::remove_timeout(caretBlinkCb, this);
+        mCaretOn = 0;
+        caretRedisplay();
+    }
+    static void caretBlinkCb(void *v)
+    {
+        CodeEditor *ed = (CodeEditor *)v;
+        ed->mCaretOn = !ed->mCaretOn;
+        ed->caretRedisplay();
+        Fl::repeat_timeout(CODE_CARET_BLINK, caretBlinkCb, v);
+    }
+    void caretDraw()
+    {
+        int cx, cy, t;
+        if (!mCaretOn || Fl::focus() != this) return;
+        if (!position_to_xy(insert_position(), &cx, &cy)) return;   /* off-screen */
+        t = mMaxsize / 8;                       /* stroke: 2 px at 14 px, grows with DPI */
+        if (t < 1) t = 1;
+        fl_push_clip(text_area.x, text_area.y, text_area.w, text_area.h);
+        fl_color(cursor_color());
+        if (insert_mode()) {
+            fl_rectf(cx, cy, t, mMaxsize);      /* bar */
+        } else {
+            fl_font(CODE_FONT, codeFontSize);   /* monospaced: every cell is an M */
+            fl_rectf(cx, cy + mMaxsize - t, (int)fl_width("M"), t);   /* underscore */
+        }
+        fl_pop_clip();
     }
 
     /* Re-lex the whole buffer. Only needed on load or a language switch. */
@@ -732,6 +807,7 @@ private:
     int mWrapOn;
     CodeUndo mUndo;
     int mDirty;
+    int mCaretOn;                 /* blink phase; drawn only while focused */
 
     static void staticModifyCb(int pos, int nInserted, int nDeleted,
                                int nRestyled, const char *deletedText, void *arg)
