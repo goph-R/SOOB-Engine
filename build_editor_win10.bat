@@ -99,11 +99,11 @@ if errorlevel 1 goto error
 
 REM ----------------------------------------------------------------
 REM  Link: FLTK (GL + core) + Bullet + Win32 GL/GDI. No -mwindows so the
-REM  conLogf stdout stays visible. -static-libgcc/-static-libstdc++ keeps
-REM  the exe free of MinGW runtime DLLs, same as the game's Win10 build.
+REM  conLogf stdout stays visible. -static links the MinGW runtime -- libgcc,
+REM  libstdc++ and libwinpthread -- into the exe, so it needs no DLLs.
 REM ----------------------------------------------------------------
 echo Linking...
-%GPP% %OBJDIR%\editor_w10.o %OBJDIR%\bl_w10.o %OBJDIR%\bc_w10.o %OBJDIR%\bd_w10.o %OBJDIR%\lua_w10.o -o SoobEditor_w10.exe -L%FLTK%\lib_w10 -lfltk_gl -lfltk -lopengl32 -lglu32 -lole32 -luuid -lcomctl32 -lcomdlg32 -lgdi32 -lwinspool -lwsock32 -static-libgcc -static-libstdc++
+%GPP% %OBJDIR%\editor_w10.o %OBJDIR%\bl_w10.o %OBJDIR%\bc_w10.o %OBJDIR%\bd_w10.o %OBJDIR%\lua_w10.o -o SoobEditor_w10.exe -L%FLTK%\lib_w10 -lfltk_gl -lfltk -lopengl32 -lglu32 -lole32 -luuid -lcomctl32 -lcomdlg32 -lgdi32 -lwinspool -lwsock32 -static
 if errorlevel 1 goto error
 
 echo.
