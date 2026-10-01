@@ -12,20 +12,20 @@ REM  and run from the same folder.
 REM ----------------------------------------------------------------
 
 REM ----------------------------------------------------------------
-REM  FLTK 1.3.11 source lives under vendor\fltk-1.3\FL and its static
-REM  libs are produced by build_fltk.bat (run that FIRST). Headers are
+REM  FLTK 1.3.11 source lives under ..\SOOB-Core\vendor\fltk-1.3\FL and its static
+REM  libs are produced by build_fltk.bat in SOOB-Core (run that FIRST). Headers are
 REM  under %FLTK%\FL, libs libfltk.a / libfltk_gl.a under %FLTK%\lib.
 REM  FLTK 1.4 needs C++11 -- the 1.3.x series is the one for Win98.
 REM ----------------------------------------------------------------
-set "FLTK=vendor\fltk-1.3\FL"
+set "FLTK=..\SOOB-Core\vendor\fltk-1.3\FL"
 if not exist "%FLTK%\FL\Fl.H" (
     echo ERROR: FLTK headers not found at %FLTK%\FL\.
     echo Run this .bat from the repo root, with FLTK at
-    echo   vendor\fltk-1.3\FL  ^(or edit FLTK at the top^).
+    echo   ..\SOOB-Core\vendor\fltk-1.3\FL  ^(or edit FLTK at the top^).
     goto error
 )
 if not exist "%FLTK%\lib\libfltk_gl.a" (
-    echo ERROR: FLTK libraries not built. Run build_fltk.bat first.
+    echo ERROR: FLTK libraries not built. Run build_fltk.bat in SOOB-Core first.
     goto error
 )
 

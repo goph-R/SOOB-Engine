@@ -8,7 +8,7 @@ REM  Win98 has no cmd.exe, so setlocal, quoted "set" and parenthesised
 REM  if/else blocks are all out -- flow is plain goto, and directories
 REM  are tested for with \nul rather than by their bare name.
 REM
-REM  Run fltk98.bat FIRST, then this, both from the repo root:
+REM  Run fltk98.bat in SOOB-Core FIRST, then this from the repo root:
 REM      X:
 REM      cd \Projects\SOOB-Engine
 REM      ed98
@@ -22,16 +22,15 @@ REM ---- Current-directory check. main.cpp is a valid 8.3 name, so this
 REM ---- test raises no long-filename question.
 if not exist main.cpp goto nocwd
 
-set FLTK=vendor\fltk-1.3\FL
 set ENGINE=..\SOOB-Core
+set FLTK=%ENGINE%\vendor\fltk-1.3\FL
 set OBJDIR=raw\obj
 set DC=C:\Dev-Cpp\bin
 
-REM ---- FLTK must be built. Test the sentinel fltk98.bat writes rather
-REM ---- than libfltk_gl.a, whose 10-character stem is not 8.3 and so may
-REM ---- not resolve through COMMAND.COM's builtins. Every component of
-REM ---- this path is short: fltk-1.3 is legal 8.3 (stem fltk-1, ext 3).
-if not exist %FLTK%\lib\fltkok.tag goto nofltk
+REM ---- FLTK must be built (fltk98.bat in SOOB-Core). Not tested here:
+REM ---- COMMAND.COM's builtins resolve 8.3 names only and "SOOB-Core" is
+REM ---- not one, so "if exist" through it is unreliable. Without FLTK the
+REM ---- link stops with "cannot find -lfltk".
 
 if not exist raw\nul mkdir raw
 if not exist %OBJDIR%\nul mkdir %OBJDIR%
@@ -99,7 +98,7 @@ goto end
 
 :nofltk
 echo ERROR: FLTK libraries not built.
-echo Run fltk98.bat first - it writes %FLTK%\lib\fltkok.tag when done.
+echo Run fltk98.bat in SOOB-Core first.
 goto error
 
 :nocwd

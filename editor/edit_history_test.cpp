@@ -5,7 +5,7 @@
  *
  * entity.h pulls in texture.h/iqm.h, which reference GL symbols (never called
  * here), so this one links against GL — unlike the pure-mesh tests:
- *   g++ -I. -I../SOOB-Core -Ivendor/fltk-1.3/FL editor/edit_history_test.cpp -lGL -o /tmp/eht && /tmp/eht
+ *   g++ -I. -I../SOOB-Core -I../SOOB-Core/vendor/fltk-1.3/FL editor/edit_history_test.cpp -lGL -o /tmp/eht && /tmp/eht
  */
 #include <cstdio>
 #include <cstdarg>

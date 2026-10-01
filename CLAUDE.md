@@ -27,6 +27,8 @@ Bullet is compiled from the three unity-build files `vendor/bullet3-3.25/src/btL
 
 There are no tests and no lint step.
 
+**Level editor (FLTK).** `editor/editor.cpp` is built by `build_editor.bat` (Dev-C++ under cmd.exe), `ed98.bat` (Win98 COMMAND.COM) and `build_editor_win10.bat`. The patched FLTK 1.3 it links (`..\SOOB-Core\vendor\fltk-1.3`) and the shared FLTK helpers it includes as `"fltk_ui/edit_dpi.h"` / `"fltk_ui/edit_menupad.h"` live in **SOOB-Core** — build FLTK there first (`fltk98.bat` / `build_fltk.bat` / `build_fltk_win10.bat`); see `SOOB-Core/docs/editor-fltk-win98.md`. The code editor that used to live here is now its own repo, **SOOB-Code**. Win98 batch files must not `if exist` a path through `..\SOOB-Core` (not an 8.3 name).
+
 ## Running
 
 Run the built executable from the repo root — it reads everything under `assets/` (levels, models, textures, sounds) as **relative paths**. `cd build && ./SDLFun` will fail to find assets.

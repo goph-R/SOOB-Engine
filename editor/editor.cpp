@@ -54,8 +54,8 @@
 #include <FL/fl_ask.H>
 #include <FL/Fl_File_Chooser.H>
 #include <FL/gl.h>
-#include "edit_dpi.h"
-#include "edit_menupad.h"
+#include "fltk_ui/edit_dpi.h"       /* SOOB-Core: DPI scaling for FLTK          */
+#include "fltk_ui/edit_menupad.h"   /* SOOB-Core: menu icon-column padding       */
 
 #include <cstdio>
 #include <cstdarg>

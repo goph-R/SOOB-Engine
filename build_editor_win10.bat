@@ -13,7 +13,7 @@ REM  Run from the REPO ROOT. Editor sources are in editor\;
 REM  SoobEditor_w10.exe is written here so it sits beside assets\
 REM  (assets are relative-pathed, exactly like the game).
 REM
-REM  Prerequisite: run build_fltk_win10.bat FIRST -- it produces the
+REM  Prerequisite: run build_fltk_win10.bat in SOOB-Core FIRST -- it produces the
 REM  static libs in %FLTK%\lib_w10 (a separate dir from the Dev-C++
 REM  build's lib\, since the two toolchains' archives are not ABI
 REM  compatible).
@@ -22,7 +22,7 @@ REM ----------------------------------------------------------------
 set "ENGINE=..\SOOB-Core"
 set "GPP=%ENGINE%\vendor_win10\mingw32\bin\g++.exe"
 set "GCC=%ENGINE%\vendor_win10\mingw32\bin\gcc.exe"
-set "FLTK=vendor\fltk-1.3\FL"
+set "FLTK=%ENGINE%\vendor\fltk-1.3\FL"
 set "OBJDIR=raw\obj"
 
 if not exist "%GPP%" (
@@ -34,11 +34,11 @@ if not exist "%GPP%" (
 if not exist "%FLTK%\FL\Fl.H" (
     echo ERROR: FLTK headers not found at %FLTK%\FL\.
     echo Run this .bat from the repo root, with FLTK at
-    echo   vendor\fltk-1.3\FL  ^(or edit FLTK at the top^).
+    echo   ..\SOOB-Core\vendor\fltk-1.3\FL  ^(or edit FLTK at the top^).
     goto error
 )
 if not exist "%FLTK%\lib_w10\libfltk_gl.a" (
-    echo ERROR: FLTK libraries not built. Run build_fltk_win10.bat first.
+    echo ERROR: FLTK libraries not built. Run build_fltk_win10.bat in SOOB-Core first.
     goto error
 )
 
