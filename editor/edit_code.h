@@ -49,6 +49,7 @@
 #include <stdarg.h>
 
 #include "edit_lex.h"
+#include "edit_fileio.h"
 
 /* ---- crash-localising trace -------------------------------------------
  * Appends and CLOSES on every call, so a hard crash on the target still leaves
@@ -149,6 +150,10 @@ static Fl_Text_Display::Style_Table_Entry codeStyleTable[LEX_NSTYLES] = {
 #define CODE_INDENT 4
 #endif
 static int codeIndent = CODE_INDENT;
+/* Tab / auto-indent insert tab characters instead of spaces. */
+static int codeUseTabs = 0;
+/* Show the line-number gutter. */
+static int codeLineNumbers = 1;
 
 /* Runtime code font size -- CODE_FONTSIZE scaled for the display. Set it with
  * codeSetFontSize() BEFORE the first CodeEditor is constructed; existing
@@ -534,9 +539,11 @@ public:
         mLineNumLines = -1;
         mMaxCols = 0;
         mCharPx  = 0;
+        mEnc     = CODE_ENC_UTF8;
+        mCrlf    = CODE_DEFAULT_CRLF;
         fl_text_display_longest_line = longestLineHook;   /* see trackLongest() */
 
-        linenumber_width(codeGutterWidth());
+        linenumber_width(codeLineNumbers ? codeGutterWidth() : 0);
         linenumber_font(CODE_FONT);
         linenumber_size(codeFontSize);
         linenumber_bgcolor(CODE_COL_GUTTER);
@@ -673,24 +680,76 @@ public:
         fl_pop_clip();
     }
 
-    /* Load a file and pick the language from its extension.
+    /* Load a file and pick the language from its extension. The encoding and
+     * line ending are detected and kept for saving (edit_fileio.h).
      * Returns 0 on success, like Fl_Text_Buffer::loadfile(). */
     int loadFile(const char *path)
     {
-        int r;
+        int enc, crlf;
+        char *t = codeReadText(path, &enc, &crlf);
+        if (!t) return 1;
         mLang = lexLangFromPath(path);
-        r = mTextBuf->loadfile(path);
+        mTextBuf->text(t);
+        free(t);
         rehighlightAll();
         clearUndo();
         mDirty = 0;
-        return r;
+        mEnc   = enc;
+        mCrlf  = crlf;
+        return 0;
     }
 
     int saveFile(const char *path)
     {
-        int r = mTextBuf->savefile(path);
+        char *t = mTextBuf->text();
+        int r = codeWriteText(path, t, (int)strlen(t), mEnc, mCrlf);
+        free(t);
         if (r == 0) mDirty = 0;
         return r;
+    }
+
+    /* Encoding / line ending used on save. Changing either marks the file
+     * modified, as the next save converts it. */
+    int  encoding() const { return mEnc; }
+    void encoding(int e)  { if (e != mEnc) { mEnc = e; mDirty = 1; } }
+    int  crlf() const     { return mCrlf; }
+    void crlf(int c)      { c = c ? 1 : 0; if (c != mCrlf) { mCrlf = c; mDirty = 1; } }
+    int  ansiLossy()
+    {
+        char *t = mTextBuf->text();
+        int r = codeAnsiIsLossy(t, (int)strlen(t));
+        free(t);
+        return r;
+    }
+
+    /* Re-apply the look after the settings changed (font size, tab width,
+     * line numbers). resize() is where FLTK recomputes the line height. */
+    void applySettings()
+    {
+        textsize(codeFontSize);
+        linenumber_size(codeFontSize);
+        linenumber_width(codeLineNumbers ? codeGutterWidth() : 0);
+        mTextBuf->tab_distance(codeIndent);
+        mCharPx = 0;
+        mWrapPx = 0;
+        rescanLongest();
+        if (mWrapOn) wrapEnable(1);
+        resize(x(), y(), w(), h());
+        redraw();
+    }
+
+    /* Caret line (1-based) and display column (1-based, tabs expanded).
+     * Counts from the first visible line when it can, so it stays cheap on a
+     * long file -- the status bar asks after every event. */
+    void caretLineCol(int *line, int *col)
+    {
+        int pos = insert_position();
+        int top = get_absolute_top_line_number();
+        *col = mTextBuf->count_displayed_characters(mTextBuf->line_start(pos), pos) + 1;
+        if (top > 0 && pos >= mFirstChar)
+            *line = top + mTextBuf->count_lines(mFirstChar, pos);
+        else
+            *line = mTextBuf->count_lines(0, pos) + 1;
     }
 
     void text(const char *s)
@@ -834,7 +893,7 @@ public:
         insert("\n");
         insert(ind);
         free(ind);
-        if (open) { spaces(pad, codeIndent); insert(pad); }
+        if (open) { if (codeUseTabs) insert("\t"); else { spaces(pad, codeIndent); insert(pad); } }
         endUndoGroup();
         show_insert_position();
     }
@@ -852,8 +911,8 @@ public:
         killSelection();
         pos = insert_position();
         col = mTextBuf->count_displayed_characters(mTextBuf->line_start(pos), pos);
-        spaces(pad, codeIndent - col % codeIndent);
-        insert(pad);
+        if (codeUseTabs) insert("\t");
+        else { spaces(pad, codeIndent - col % codeIndent); insert(pad); }
         endUndoGroup();
         show_insert_position();
     }
@@ -877,8 +936,8 @@ public:
         for (i = 0, ls = first; i < n; i++) {
             if (dir > 0) {
                 if (mTextBuf->line_end(ls) > ls) {        /* leave blank lines blank */
-                    spaces(pad, codeIndent);
-                    mTextBuf->insert(ls, pad);
+                    if (codeUseTabs) mTextBuf->insert(ls, "\t");
+                    else { spaces(pad, codeIndent); mTextBuf->insert(ls, pad); }
                 }
             } else {
                 k = 0;
@@ -1008,6 +1067,8 @@ private:
     int mCaretOn;                 /* blink phase; drawn only while focused */
     int mLineNumLines;            /* mNBufferLines at the last margin repaint */
     int mMaxCols;                 /* longest line in the buffer, in columns */
+    int mEnc;                     /* CODE_ENC_*: how the file is saved */
+    int mCrlf;                    /* 1 = CRLF line ends on disk, 0 = LF */
     int mCharPx;                  /* one monospaced cell, px; 0 = not measured yet */
 
     static void staticModifyCb(int pos, int nInserted, int nDeleted,

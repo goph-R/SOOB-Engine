@@ -32,6 +32,9 @@
 #include <FL/Fl_Input.H>
 #include <FL/Fl_Check_Button.H>
 #include <FL/Fl_Button.H>
+#include <FL/Fl_Return_Button.H>
+#include <FL/Fl_Int_Input.H>
+#include <FL/Fl_Box.H>
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -43,21 +46,24 @@
 #include "edit_code.h"
 #include "edit_filedlg.h"
 #include "edit_find.h"
+#include "edit_settings.h"
 
 /* Bump on a feature change. The __DATE__/__TIME__ stamp beside it is the one
  * that cannot lie: the compiler writes it, so a title showing an old timestamp
  * means the running exe is not the one you just built. */
-#define CODEEDIT_VERSION "0.7"
+#define CODEEDIT_VERSION "1.0"
 
 #define MAX_DOCS   16
 #define MENU_H     25
 #define TABROW_H   30         /* tab row incl. the strip above the tabs */
+#define STATUS_H   22         /* status bar */
 
 typedef struct CodeDoc {
     CodeEditor *ed;
     char path[512];            /* empty => untitled */
     char label[160];           /* what is currently on the tab */
     int  shownDirty;           /* so labels are only rebuilt when they change */
+    int  wrapColSet;           /* Wrap at Column... used: ignore the default */
 } CodeDoc;
 
 static CodeDoc          gDocs[MAX_DOCS];
@@ -66,6 +72,8 @@ static Fl_Double_Window *gWin;
 static CodeTabs         *gTabs;
 static int              gUntitledSeq = 1;
 static Fl_Double_Window *gFindWin;      /* defined with the Find UI below */
+static CodeSettings     gSet;           /* codeedit.ini, see edit_settings.h */
+static void recentNote(const char *path);
 
 static void msg(const char *fmt, ...)
 {
@@ -155,6 +163,7 @@ static void refreshLabel(int i)
 
 static void syncWrapItem(void);
 static void syncLangItems(void);
+static void syncEncItems(void);
 
 static void labelTimer(void *)
 {
@@ -162,6 +171,7 @@ static void labelTimer(void *)
     for (i = 0; i < gDocCount; i++) refreshLabel(i);
     syncWrapItem();               /* the Word Wrap check follows the active tab */
     syncLangItems();              /* ...and so does the Language check */
+    syncEncItems();               /* ...and the Encoding / line-ending checks */
     Fl::repeat_timeout(0.4, labelTimer);
 }
 
@@ -197,6 +207,7 @@ static CodeEditor *addDoc(const char *path)
             return 0;
         }
         copyStr(d->path, (int)sizeof(d->path), path);
+        recentNote(path);
     } else {
         gUntitledSeq++;
         d->ed->language(LEX_LANG_LUA);
@@ -231,6 +242,15 @@ static int saveDoc(int i, int forcePrompt)
         copyStr(d->path, (int)sizeof(d->path), picked);
         /* the extension may have changed the language */
         d->ed->language(lexLangFromPath(d->path));
+        recentNote(d->path);
+    }
+    /* ANSI can only hold the characters of the system code page */
+    if (d->ed->encoding() == CODE_ENC_ANSI && d->ed->ansiLossy()) {
+        int c = fl_choice("Some characters in\n%s\ncannot be saved as ANSI.",
+                          "Cancel", "Save as UTF-8", "Save anyway (as ?)",
+                          baseName(d->path));
+        if (c == 0) return 0;
+        if (c == 1) d->ed->encoding(CODE_ENC_UTF8);
     }
     if (d->ed->saveFile(d->path) != 0) {
         fl_alert("Could not save\n%s", d->path);
@@ -365,6 +385,13 @@ static void cbClose (Fl_Widget *, void *)
 static void cbExit(Fl_Widget *, void *)
 {
     if (quitAll()) {
+        if (gSet.rememberWin) {
+            gSet.winX = gWin->x();
+            gSet.winY = gWin->y();
+            gSet.winW = gWin->w();
+            gSet.winH = gWin->h();
+        }
+        codeSettingsSave(&gSet);
         if (gFindWin) gFindWin->hide();   /* else Fl::run() never returns */
         gWin->hide();
     }
@@ -398,9 +425,13 @@ static void syncWrapItem(void)
 static void cbWrap(Fl_Widget *, void *)
 {
     int i = currentIndex();
+    CodeEditor *ed;
     if (i < 0) return;
-    gDocs[i].ed->wrapEnable(!gDocs[i].ed->wrapped());
-    gDocs[i].ed->redraw();
+    ed = gDocs[i].ed;
+    /* switching on, and this file never had its own column: use the default */
+    if (!ed->wrapped() && !gDocs[i].wrapColSet) ed->wrapColumn(gSet.wrapCol);
+    ed->wrapEnable(!ed->wrapped());
+    ed->redraw();
     syncWrapItem();
 }
 
@@ -413,10 +444,11 @@ static void cbWrapCol(Fl_Widget *, void *)
 
     if (i < 0) return;
     ed = gDocs[i].ed;
-    sprintf(def, "%d", ed->wrapColumn());
+    sprintf(def, "%d", gDocs[i].wrapColSet ? ed->wrapColumn() : gSet.wrapCol);
     ans = fl_input("Wrap at column  (0 = wrap to window width):", def);
     if (!ans) return;
     ed->wrapColumn(atoi(ans));
+    gDocs[i].wrapColSet = 1;
     ed->wrapEnable(1);
     ed->redraw();
     syncWrapItem();
@@ -443,6 +475,258 @@ static void syncLangItems(void)
     for (; it && it->text && it->callback() == cbLang; it = it->next()) {
         editMenuCheck(it, (int)(long)it->user_data() == lang);
     }
+}
+
+/* ---- encoding / line ending ---------------------------------------------
+ * Per document, like the language; the label timer keeps the checks on the
+ * active tab. Choosing one converts on the next save (and marks the file
+ * modified) -- the text in the editor is UTF-8 either way. */
+static char gAnsiLabel[48] = "ANSI";     /* gets the code page in main() */
+
+static void cbEnc(Fl_Widget *, void *v)
+{
+    int i = currentIndex();
+    if (i >= 0) gDocs[i].ed->encoding((int)(long)v);
+    syncEncItems();
+}
+static void cbEol(Fl_Widget *, void *v)
+{
+    int i = currentIndex();
+    if (i >= 0) gDocs[i].ed->crlf((int)(long)v);
+    syncEncItems();
+}
+static void syncEncItems(void)
+{
+    Fl_Menu_Item *it;
+    int i = currentIndex();
+    int enc  = i >= 0 ? gDocs[i].ed->encoding() : -1;
+    int crlf = i >= 0 ? gDocs[i].ed->crlf() : -1;
+    if (!gMenuBar) return;
+    it = (Fl_Menu_Item *)gMenuBar->find_item(cbEnc);
+    for (; it && it->text && it->callback() == cbEnc; it = it->next())
+        editMenuCheck(it, (int)(long)it->user_data() == enc);
+    it = (Fl_Menu_Item *)gMenuBar->find_item(cbEol);
+    for (; it && it->text && it->callback() == cbEol; it = it->next())
+        editMenuCheck(it, (int)(long)it->user_data() == crlf);
+}
+
+/* ---- recent files ------------------------------------------------------
+ * CODE_MAX_RECENT fixed slots in the static menu, shown / hidden and
+ * relabelled as the list changes. Fl_Menu_::find_item(callback) walks the raw
+ * array, hidden items included, and the slots are contiguous, so slot k is
+ * simply first + k. */
+static char gRecentLabel[CODE_MAX_RECENT][600];
+static void cbRecent(Fl_Widget *, void *v);
+static void cbRecentNone(Fl_Widget *, void *) {}
+
+static void syncRecentItems(void)
+{
+    Fl_Menu_Item *first, *none;
+    int k;
+    if (!gMenuBar) return;
+    first = (Fl_Menu_Item *)gMenuBar->find_item(cbRecent);
+    none  = (Fl_Menu_Item *)gMenuBar->find_item(cbRecentNone);
+    if (!first) return;
+    for (k = 0; k < CODE_MAX_RECENT; k++) {
+        Fl_Menu_Item *it = first + k;
+        if (k < gSet.nRecent) {
+            /* "&1  path" -- a '&' in the path would be read as a shortcut */
+            char *o = gRecentLabel[k], *end = o + sizeof(gRecentLabel[k]) - 2;
+            const char *p = gSet.recent[k];
+            o += sprintf(o, "&%d  ", k + 1);
+            for (; *p && o < end; p++) { if (*p == '&') *o++ = '&'; *o++ = *p; }
+            *o = '\0';
+            it->labeltype(EDIT_MENUPAD_LABEL);   /* hidden at editMenuPad() time */
+            it->show();
+        } else {
+            it->hide();
+        }
+    }
+    if (none) {
+        none->labeltype(EDIT_MENUPAD_LABEL);
+        if (gSet.nRecent) none->hide(); else none->show();
+    }
+}
+
+static void recentNote(const char *path)
+{
+    codeRecentAdd(&gSet, path);
+    codeSettingsSave(&gSet);
+    syncRecentItems();
+}
+
+static void cbRecent(Fl_Widget *, void *v)
+{
+    char path[512];
+    int i, k = (int)(long)v;
+    if (k < 0 || k >= gSet.nRecent) return;
+    copyStr(path, (int)sizeof(path), gSet.recent[k]);
+    for (i = 0; i < gDocCount; i++)                   /* already open: just show it */
+        if (codePathEq(gDocs[i].path, path)) {
+            gTabs->value(gDocs[i].ed);
+            gTabs->redraw();
+            gDocs[i].ed->take_focus();
+            recentNote(path);
+            return;
+        }
+    if (!addDoc(path)) {                              /* gone: drop it from the list */
+        for (i = 0; i < gSet.nRecent; i++)
+            if (codePathEq(gSet.recent[i], path)) { codeRecentRemove(&gSet, i); break; }
+        codeSettingsSave(&gSet);
+        syncRecentItems();
+    }
+}
+
+/* ---- settings ---------------------------------------------------------- */
+static void applySettings(void)
+{
+    int i;
+    codeIndent      = gSet.tabWidth;
+    codeUseTabs     = gSet.useTabs;
+    codeLineNumbers = gSet.lineNumbers;
+    codeSetFontSize(editDpi(gSet.fontSize));
+    for (i = 0; i < gDocCount; i++) gDocs[i].ed->applySettings();
+    if (gTabs) {
+        gTabs->firstTabAt(codeLineNumbers ? codeGutterWidth() : 0);
+        gTabs->redraw();
+    }
+}
+
+static void cbSettings(Fl_Widget *, void *)
+{
+    char buf[16];
+    Fl_Double_Window *w = new Fl_Double_Window(340, 226, "Settings");
+    Fl_Int_Input *font, *tab, *wrap;
+    Fl_Check_Button *tabs, *nums, *rem;
+    Fl_Return_Button *ok;
+    Fl_Button *cancel;
+    Fl_Box *hint;
+
+    w->begin();
+    font = new Fl_Int_Input(150, 10, 60, 24, "Code font size:");
+    tab  = new Fl_Int_Input(150, 40, 60, 24, "Tab width:");
+    wrap = new Fl_Int_Input(150, 70, 60, 24, "Word wrap column:");
+    hint = new Fl_Box(216, 70, 116, 24, "0 = window width");
+    hint->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+    tabs = new Fl_Check_Button(16, 104, 310, 22, "Indent with tab characters");
+    nums = new Fl_Check_Button(16, 128, 310, 22, "Show line numbers");
+    rem  = new Fl_Check_Button(16, 152, 310, 22, "Remember window size and position");
+    ok     = new Fl_Return_Button(150, 190, 86, 26, "OK");
+    cancel = new Fl_Button(244, 190, 86, 26, "Cancel");
+    w->end();
+    editDpiScaleTree(w);
+
+    sprintf(buf, "%d", gSet.fontSize); font->value(buf);
+    sprintf(buf, "%d", gSet.tabWidth); tab->value(buf);
+    sprintf(buf, "%d", gSet.wrapCol);  wrap->value(buf);
+    tabs->value(gSet.useTabs);
+    nums->value(gSet.lineNumbers);
+    rem->value(gSet.rememberWin);
+
+    /* Modal, driven by Fl::readqueue(): widgets without a callback of their
+     * own are queued when activated. Closing the window just hides it. */
+    w->set_modal();
+    w->show();
+    while (w->shown()) {
+        Fl_Widget *o = Fl::readqueue();
+        if (!o) { Fl::wait(); continue; }
+        if (o == cancel) break;
+        if (o == ok) {
+            gSet.fontSize    = codeClampInt(atoi(font->value()), 6, 72);
+            gSet.tabWidth    = codeClampInt(atoi(tab->value()), 1, 16);
+            gSet.wrapCol     = codeClampInt(atoi(wrap->value()), 0, 1000);
+            gSet.useTabs     = tabs->value() ? 1 : 0;
+            gSet.lineNumbers = nums->value() ? 1 : 0;
+            gSet.rememberWin = rem->value() ? 1 : 0;
+            applySettings();
+            codeSettingsSave(&gSet);
+            break;
+        }
+    }
+    w->hide();
+    Fl::delete_widget(w);
+}
+
+/* ---- status bar --------------------------------------------------------
+ * Right-aligned fields: Ln/Col, language, line ending, encoding. Refreshed
+ * from an Fl::add_check() hook (after every event batch); it only redraws
+ * when the text actually changed. */
+static const char *langName(int lang)
+{
+    switch (lang) {
+    case LEX_LANG_PASCAL:   return "Pascal";
+    case LEX_LANG_LUA:      return "Lua";
+    case LEX_LANG_MARKDOWN: return "Markdown";
+    case LEX_LANG_C:        return "C / C++";
+    case LEX_LANG_JAVA:     return "Java";
+    case LEX_LANG_JS:       return "JavaScript";
+    case LEX_LANG_PYTHON:   return "Python";
+    case LEX_LANG_CSS:      return "CSS";
+    case LEX_LANG_HTML:     return "HTML";
+    case LEX_LANG_PHP:      return "PHP";
+    case LEX_LANG_SQL:      return "SQL";
+    default:                return "Plain text";
+    }
+}
+
+class CodeStatus : public Fl_Widget {
+public:
+    CodeStatus(int X, int Y, int W, int H) : Fl_Widget(X, Y, W, H) { mText[0] = '\0'; }
+    /* Fields separated by '\t'. */
+    void set(const char *t)
+    {
+        if (strcmp(t, mText) == 0) return;
+        copyStr(mText, (int)sizeof(mText), t);
+        redraw();
+    }
+protected:
+    void draw()
+    {
+        const char *f[8];
+        int len[8], n = 0, k, X, base;
+        int pad = editDpi(10), gap = editDpi(20);
+        const char *p = mText;
+        fl_rectf(x(), y(), w(), h(), color());
+        while (n < 8) {
+            const char *e = strchr(p, '\t');
+            f[n] = p;
+            len[n] = e ? (int)(e - p) : (int)strlen(p);
+            n++;
+            if (!e) break;
+            p = e + 1;
+        }
+        fl_font(FL_HELVETICA, FL_NORMAL_SIZE);
+        base = y() + (h() + fl_height()) / 2 - fl_descent();
+        X = x() + w() - pad;
+        for (k = n - 1; k >= 0; k--) {
+            X -= (int)fl_width(f[k], len[k]);
+            fl_color(labelcolor());
+            fl_draw(f[k], len[k], X, base);
+            if (k > 0) {                      /* thin divider between fields */
+                fl_color(fl_color_average(labelcolor(), color(), 0.3f));
+                fl_yxline(X - gap / 2, y() + h() / 4, y() + h() - h() / 4);
+            }
+            X -= gap;
+        }
+    }
+private:
+    char mText[256];
+};
+static CodeStatus *gStatus;
+
+static void statusCheck(void *)
+{
+    char buf[200];
+    int i, line, col;
+    if (!gStatus || !gTabs) return;
+    i = currentIndex();
+    if (i < 0) { gStatus->set(""); return; }
+    gDocs[i].ed->caretLineCol(&line, &col);
+    sprintf(buf, "Ln %d, Col %d\t%s\t%s\t%s", line, col,
+            langName(gDocs[i].ed->language()),
+            gDocs[i].ed->crlf() ? "Windows (CRLF)" : "Unix (LF)",
+            codeEncName(gDocs[i].ed->encoding()));
+    gStatus->set(buf);
 }
 
 /* ---- Find / Replace ----------------------------------------------------
@@ -610,6 +894,17 @@ static Fl_Menu_Item gMenu[] = {
         { "&Open...",    FL_CTRL + 'o', cbOpen   },
         { "&Save",       FL_CTRL + 's', cbSave   },
         { "Save &As...", 0,             cbSaveAs, 0, FL_MENU_DIVIDER },
+        { "Recent &Files", 0, 0, 0, FL_SUBMENU | FL_MENU_DIVIDER },
+            { gRecentLabel[0], 0, cbRecent, (void *)0, FL_MENU_INVISIBLE },
+            { gRecentLabel[1], 0, cbRecent, (void *)1, FL_MENU_INVISIBLE },
+            { gRecentLabel[2], 0, cbRecent, (void *)2, FL_MENU_INVISIBLE },
+            { gRecentLabel[3], 0, cbRecent, (void *)3, FL_MENU_INVISIBLE },
+            { gRecentLabel[4], 0, cbRecent, (void *)4, FL_MENU_INVISIBLE },
+            { gRecentLabel[5], 0, cbRecent, (void *)5, FL_MENU_INVISIBLE },
+            { gRecentLabel[6], 0, cbRecent, (void *)6, FL_MENU_INVISIBLE },
+            { gRecentLabel[7], 0, cbRecent, (void *)7, FL_MENU_INVISIBLE },
+            { "(none)",        0, cbRecentNone, 0, FL_MENU_INACTIVE },
+            { 0 },
         { "&Close",      FL_CTRL + 'w', cbClose  },
         { "E&xit",       FL_CTRL + 'q', cbExit   },
         { 0 },
@@ -621,7 +916,8 @@ static Fl_Menu_Item gMenu[] = {
         { "&Find...",     FL_CTRL + 'f', cbFind     },
         { "Find &Next",   FL_F + 3,      cbFindNext },
         { "&Replace...",  FL_CTRL + 'h', cbReplace  },
-        { "&Go to line...", FL_CTRL + 'g', cbGotoLine },
+        { "&Go to line...", FL_CTRL + 'g', cbGotoLine, 0, FL_MENU_DIVIDER },
+        { "Se&ttings...", 0, cbSettings },
         { 0 },
     { "&View", 0, 0, 0, FL_SUBMENU },
         /* Alt+Z, not Ctrl+Shift+W: Fl::test_shortcut() only requires META/ALT/
@@ -629,6 +925,13 @@ static Fl_Menu_Item gMenu[] = {
          * binding lives dangerously next to Ctrl+W (Close). Alt is strict. */
         { "&Word Wrap", FL_ALT + 'z', cbWrap },
         { "Wrap at &Column...", 0, cbWrapCol },
+        { 0 },
+    { "E&ncoding", 0, 0, 0, FL_SUBMENU },
+        { "UTF-8",          0, cbEnc, (void *)CODE_ENC_UTF8 },
+        { "UTF-8 with BOM", 0, cbEnc, (void *)CODE_ENC_UTF8_BOM },
+        { gAnsiLabel,       0, cbEnc, (void *)CODE_ENC_ANSI, FL_MENU_DIVIDER },
+        { "Windows (CRLF)", 0, cbEol, (void *)1 },
+        { "Unix (LF)",      0, cbEol, (void *)0 },
         { 0 },
     { "&Language", 0, 0, 0, FL_SUBMENU },
         { "Plain text", 0, cbLang, (void *)LEX_LANG_TEXT, FL_MENU_DIVIDER },
@@ -668,7 +971,14 @@ int main(int argc, char **argv)
      * Widget font is 12 px at 96 DPI (FLTK default is 14), scaled for the
      * display -- same as the level editor. */
     editDpiInit(12);
-    codeSetFontSize(editDpi(CODE_FONTSIZE));
+    codeSettingsLoad(&gSet);
+    codeIndent      = gSet.tabWidth;
+    codeUseTabs     = gSet.useTabs;
+    codeLineNumbers = gSet.lineNumbers;
+    codeSetFontSize(editDpi(gSet.fontSize));
+#ifdef _WIN32
+    sprintf(gAnsiLabel, "ANSI (code page %u)", (unsigned)GetACP());
+#endif
 #ifdef _WIN32
     /* Code face: Consolas on Vista+ -- heavier and clearer than Courier New at
      * the same size. CODE_FONT is FL_COURIER, so remapping that slot switches
@@ -715,7 +1025,7 @@ int main(int argc, char **argv)
         gMenuBar->menu(gMenu);
         editMenuPad(gMenuBar);
 
-        gTabs = new CodeTabs(0, MENU_H, 760, 560 - MENU_H);
+        gTabs = new CodeTabs(0, MENU_H, 760, 560 - MENU_H - STATUS_H);
         /* Flat, borderless tabs (edit_tabs.h): the row strip in color(), the
          * active tab in selection_color() -- the editor background, so it
          * merges into the page below -- with a white label. Inactive tabs are
@@ -723,14 +1033,30 @@ int main(int argc, char **argv)
         gTabs->color(CODE_COL_TABROW);
         gTabs->selection_color(CODE_COL_BG);
         gTabs->labelcolor(CODE_COL_FG);
-        gTabs->firstTabAt(codeGutterWidth());  /* tabs start where the gutter ends */
+        gTabs->firstTabAt(codeLineNumbers ? codeGutterWidth() : 0);  /* tabs start where the gutter ends */
         gTabs->closeCallback(cbTabClose, 0);
         gTabs->end();
+
+        gStatus = new CodeStatus(0, 560 - STATUS_H, 760, STATUS_H);
+        gStatus->color(CODE_COL_TABROW);
+        gStatus->labelcolor(CODE_COL_TAB_OFF);
     }
     gWin->end();
     editDpiScaleTree(gWin);             /* before addDoc: editors are added pre-scaled */
     gWin->resizable(gTabs);
     gWin->callback(cbWinClose);         /* the X button must ask about unsaved work */
+    syncRecentItems();
+
+    /* Last window rectangle -- the position only if its title bar would land
+     * on a screen (the monitor may be gone), the size either way. */
+    if (gSet.rememberWin && gSet.winW >= 200 && gSet.winH >= 150) {
+        int sx, sy, sw, sh, cx = gSet.winX + gSet.winW / 2, cy = gSet.winY + 10;
+        Fl::screen_xywh(sx, sy, sw, sh, cx, cy);
+        if (cx >= sx && cx < sx + sw && cy >= sy && cy < sy + sh)
+            gWin->resize(gSet.winX, gSet.winY, gSet.winW, gSet.winH);
+        else
+            gWin->size(gSet.winW, gSet.winH);
+    }
 
     for (i = 1; i < argc; i++)
         if (strcmp(argv[i], "-trace") != 0) addDoc(argv[i]);
@@ -759,6 +1085,7 @@ int main(int argc, char **argv)
     }
 
     Fl::add_timeout(0.4, labelTimer);   /* keeps the " *" dirty marks current */
+    Fl::add_check(statusCheck, 0);      /* status bar: after every event batch */
 
     /* Build stamp + the actual menu the RUNNING binary has. If "&View" is not
      * in this list, the exe is stale -- e98.bat always recompiles, so that
