@@ -23,7 +23,7 @@ Audio is OpenAL 1.1 / OpenAL Soft via the header-only wrapper in `sound.h`. The 
 
 Bullet is compiled from the three unity-build files `vendor/bullet3-3.25/src/btLinearMathAll.cpp`, `btBulletCollisionAll.cpp`, `btBulletDynamicsAll.cpp`. These produce `raw/obj/bl.o`, `bc.o`, `bd.o` (batch scripts) or `bullet_linear_math.o` etc. (Makefile, still in repo root). Together they take ~60–90s to compile on a modern machine and ~only change when you bump the Bullet version.
 
-**Caching**: the Linux Makefile tracks `.cpp` → `.o` dependencies normally. The Windows batch scripts (`build.bat`, `build_win10.bat`) write all `.o` output to `raw/obj/` (gitignored) and skip the Bullet compile if the cached files exist (`if exist raw\obj\bl.o ...`). They do **not** track Bullet header changes, so if you edit a Bullet header or switch compilers/toolchains, delete `raw\obj\bl.o bc.o bd.o` to force a rebuild.
+**Caching**: the Linux Makefile tracks `.cpp` → `.o` dependencies normally. The Windows batch scripts (`build.bat`, `build_win10.bat`) write all `.o` output to `raw/obj/` (gitignored) and skip the Bullet compile if the cached files exist (`if exist raw\obj\bl.o ...`). They do **not** track Bullet header changes, so if you edit a Bullet header or switch compilers/toolchains, delete `raw\obj\bl.o bc.o bd.o` to force a rebuild. The Win10 scripts (`build_win10.bat`, `build_editor_win10.bat`) cache under `_w10`-suffixed names (`bl_w10.o`, `bc_w10.o`, `bd_w10.o`, `lua_w10.o`, `vorbis_w10.o`) so Dev-C++ (GCC 3.4, SJLJ exceptions) and WinLibs (GCC 15) objects can coexist — mixing them fails at link time with `__gxx_personality_sj0` / `_Unwind_SjLj_*` undefined references.
 
 There are no tests and no lint step.
 

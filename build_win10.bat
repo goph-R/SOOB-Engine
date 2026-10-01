@@ -45,51 +45,51 @@ set "OBJDIR=raw\obj"
 if not exist "%OBJDIR%" mkdir "%OBJDIR%"
 
 REM ----------------------------------------------------------------
-REM  Compile Bullet Physics (cached — delete raw\obj\bl.o/bc.o/bd.o to force rebuild)
+REM  Compile Bullet Physics (cached — delete raw\obj\bl_w10.o/bc_w10.o/bd_w10.o to force rebuild)
 REM ----------------------------------------------------------------
-if exist %OBJDIR%\bl.o (
-    echo Skipping Bullet Linear Math ^(bl.o cached^)
+if exist %OBJDIR%\bl_w10.o (
+    echo Skipping Bullet Linear Math ^(bl_w10.o cached^)
 ) else (
     echo Compiling Bullet Linear Math...
-    %GPP% %OPTS% -c vendor\bullet3-3.25\src\btLinearMathAll.cpp -o %OBJDIR%\bl.o
+    %GPP% %OPTS% -c vendor\bullet3-3.25\src\btLinearMathAll.cpp -o %OBJDIR%\bl_w10.o
     if errorlevel 1 goto error
 )
 
-if exist %OBJDIR%\bc.o (
-    echo Skipping Bullet Collision ^(bc.o cached^)
+if exist %OBJDIR%\bc_w10.o (
+    echo Skipping Bullet Collision ^(bc_w10.o cached^)
 ) else (
     echo Compiling Bullet Collision...
-    %GPP% %OPTS% -c vendor\bullet3-3.25\src\btBulletCollisionAll.cpp -o %OBJDIR%\bc.o
+    %GPP% %OPTS% -c vendor\bullet3-3.25\src\btBulletCollisionAll.cpp -o %OBJDIR%\bc_w10.o
     if errorlevel 1 goto error
 )
 
-if exist %OBJDIR%\bd.o (
-    echo Skipping Bullet Dynamics ^(bd.o cached^)
+if exist %OBJDIR%\bd_w10.o (
+    echo Skipping Bullet Dynamics ^(bd_w10.o cached^)
 ) else (
     echo Compiling Bullet Dynamics...
-    %GPP% %OPTS% -c vendor\bullet3-3.25\src\btBulletDynamicsAll.cpp -o %OBJDIR%\bd.o
+    %GPP% %OPTS% -c vendor\bullet3-3.25\src\btBulletDynamicsAll.cpp -o %OBJDIR%\bd_w10.o
     if errorlevel 1 goto error
 )
 
 REM ----------------------------------------------------------------
-REM  Lua 5.1.5 (cached — delete raw\obj\lua.o to force rebuild)
+REM  Lua 5.1.5 (cached — delete raw\obj\lua_w10.o to force rebuild)
 REM ----------------------------------------------------------------
-if exist %OBJDIR%\lua.o (
-    echo Skipping Lua ^(lua.o cached^)
+if exist %OBJDIR%\lua_w10.o (
+    echo Skipping Lua ^(lua_w10.o cached^)
 ) else (
     echo Compiling Lua...
-    %GCC% -I%ENGINE%\vendor\lua-5.1.5\src -Dluaall_c -O2 -c %ENGINE%\vendor\lua-5.1.5\src\lua_all.c -o %OBJDIR%\lua.o
+    %GCC% -I%ENGINE%\vendor\lua-5.1.5\src -Dluaall_c -O2 -c %ENGINE%\vendor\lua-5.1.5\src\lua_all.c -o %OBJDIR%\lua_w10.o
     if errorlevel 1 goto error
 )
 
 REM ----------------------------------------------------------------
-REM  stb_vorbis (cached — delete raw\obj\vorbis.o to force rebuild)
+REM  stb_vorbis (cached — delete raw\obj\vorbis_w10.o to force rebuild)
 REM ----------------------------------------------------------------
-if exist %OBJDIR%\vorbis.o (
-    echo Skipping stb_vorbis ^(vorbis.o cached^)
+if exist %OBJDIR%\vorbis_w10.o (
+    echo Skipping stb_vorbis ^(vorbis_w10.o cached^)
 ) else (
     echo Compiling stb_vorbis...
-    %GCC% -O2 -c %ENGINE%\vendor\stb\stb_vorbis.c -o %OBJDIR%\vorbis.o
+    %GCC% -O2 -c %ENGINE%\vendor\stb\stb_vorbis.c -o %OBJDIR%\vorbis_w10.o
     if errorlevel 1 goto error
 )
 
@@ -108,7 +108,7 @@ REM ----------------------------------------------------------------
 REM  Link
 REM ----------------------------------------------------------------
 echo Linking...
-%GPP% %OBJDIR%\main.o %OBJDIR%\sdl_main.o %OBJDIR%\bl.o %OBJDIR%\bc.o %OBJDIR%\bd.o %OBJDIR%\lua.o %OBJDIR%\vorbis.o -o SDLFun_w10.exe -L%ENGINE%\vendor_win10\lib -lmingw32 -lSDL -lopengl32 -lOpenAL32 -static-libgcc -static-libstdc++
+%GPP% %OBJDIR%\main.o %OBJDIR%\sdl_main.o %OBJDIR%\bl_w10.o %OBJDIR%\bc_w10.o %OBJDIR%\bd_w10.o %OBJDIR%\lua_w10.o %OBJDIR%\vorbis_w10.o -o SDLFun_w10.exe -L%ENGINE%\vendor_win10\lib -lmingw32 -lSDL -lopengl32 -lOpenAL32 -static-libgcc -static-libstdc++
 if errorlevel 1 goto error
 
 REM ----------------------------------------------------------------
