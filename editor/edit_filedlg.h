@@ -55,16 +55,23 @@
 
 /* Win32 filter: pairs of NUL-terminated strings, list ends with an extra NUL.
  * The trailing "\0" in the literal supplies that second terminator. */
+/* Every extension lexLangFromPath() recognises, so the default filter lists
+ * everything the editor can highlight. Keep the two macros in step. */
 #define CODE_FILTER_WIN32 \
-    "Source files (*.lua;*.pas;*.pp;*.inc;*.dpr;*.md)\0*.lua;*.pas;*.pp;*.inc;*.dpr;*.md\0" \
+    "Source files\0*.lua;*.pas;*.pp;*.inc;*.dpr;*.lpr;*.md;" \
+        "*.c;*.cc;*.cpp;*.cxx;*.h;*.hh;*.hpp;*.hxx;*.java;*.js;*.mjs;*.cjs;*.jsx;" \
+        "*.py;*.pyw;*.css;*.htm;*.html;*.xhtml;*.php;*.phtml;*.sql\0" \
     "Lua scripts (*.lua)\0*.lua\0" \
     "Pascal (*.pas;*.pp;*.inc;*.dpr)\0*.pas;*.pp;*.inc;*.dpr\0" \
     "Markdown (*.md)\0*.md\0" \
+    "PHP (*.php;*.phtml)\0*.php;*.phtml\0" \
+    "SQL (*.sql)\0*.sql\0" \
     "All files (*.*)\0*.*\0"
 
 /* FLTK's own chooser uses a different syntax for the same idea. */
 #define CODE_FILTER_FLTK \
-    "Source files\t*.{lua,pas,pp,inc,dpr,md}"
+    "Source files\t*.{lua,pas,pp,inc,dpr,lpr,md,c,cc,cpp,cxx,h,hh,hpp,hxx,java,js,mjs,cjs,jsx," \
+        "py,pyw,css,htm,html,xhtml,php,phtml,sql}"
 
 #if defined(WIN32) || defined(_WIN32)
 
