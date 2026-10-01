@@ -541,6 +541,14 @@ protected:
   int mSoobLineNumTop;
 };
 
+/* SOOB patch (NOT upstream FLTK): optional whole-buffer "longest line" source.
+   When set and returning >= 0 (pixels), longest_vline() uses it instead of
+   measuring only the visible lines, and the horizontal scrollbar is shown only
+   when that width exceeds the text area -- not merely because the vertical one
+   is. Returning -1 falls back to stock behaviour for that display. A plain
+   global, not a member, so sizeof(Fl_Text_Display) and the ABI are unchanged. */
+extern FL_EXPORT int (*fl_text_display_longest_line)(const Fl_Text_Display *d);
+
 #endif
 
 //

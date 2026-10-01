@@ -155,6 +155,8 @@ static int codeIndent = CODE_INDENT;
  * editors keep the size they were built with. */
 static int codeFontSize = CODE_FONTSIZE;
 
+/* Line-number gutter width: 48 px at the default size, scaled with the font. */
+static int codeGutterWidth(void) { return 48 * codeFontSize / CODE_FONTSIZE; }
 static void codeSetFontSize(int px)
 {
     int i;
@@ -530,8 +532,11 @@ public:
         show_cursor(0);             /* FLTK's caret off -- draw() paints ours */
         mCaretOn = 0;
         mLineNumLines = -1;
+        mMaxCols = 0;
+        mCharPx  = 0;
+        fl_text_display_longest_line = longestLineHook;   /* see trackLongest() */
 
-        linenumber_width(48 * codeFontSize / CODE_FONTSIZE);   /* 48 px at the default size */
+        linenumber_width(codeGutterWidth());
         linenumber_font(CODE_FONT);
         linenumber_size(codeFontSize);
         linenumber_bgcolor(CODE_COL_GUTTER);
@@ -1002,6 +1007,8 @@ private:
     int mDirty;
     int mCaretOn;                 /* blink phase; drawn only while focused */
     int mLineNumLines;            /* mNBufferLines at the last margin repaint */
+    int mMaxCols;                 /* longest line in the buffer, in columns */
+    int mCharPx;                  /* one monospaced cell, px; 0 = not measured yet */
 
     static void staticModifyCb(int pos, int nInserted, int nDeleted,
                                int nRestyled, const char *deletedText, void *arg)
@@ -1015,6 +1022,84 @@ private:
         codeUndoRecord(&ed->mUndo, ed->mTextBuf, pos, nInserted, nDeleted, deletedText);
         if (nInserted || nDeleted) ed->mDirty = 1;
         ed->styleUpdate(pos, nInserted, nDeleted);
+        ed->trackLongest(pos, nInserted, nDeleted, deletedText);
+    }
+
+    /* ---- longest line, for the horizontal scrollbar ---------------------
+     * Stock FLTK sizes the horizontal scrollbar from the longest VISIBLE line
+     * and shows it whenever the vertical one is up -- so it appears on files
+     * with no long lines, and its range jumps as you scroll. Our FLTK patch
+     * (fl_text_display_longest_line) lets us answer for the whole buffer
+     * instead. The code font is monospaced, so a line's width is just its
+     * column count times one cell: mMaxCols is kept up to date incrementally
+     * -- inserts measure only the touched lines; a delete rescans only when it
+     * could have shortened the longest line. */
+    static int longestLineHook(const Fl_Text_Display *d)
+    {
+        CodeEditor *ed = dynamic_cast<CodeEditor *>(const_cast<Fl_Text_Display *>(d));
+        if (!ed || ed->mContinuousWrap) return -1;      /* wrapped: stock rules */
+        return ed->mMaxCols * ed->charPx();
+    }
+    int charPx()
+    {
+        if (mCharPx <= 0) {
+            fl_font(CODE_FONT, codeFontSize);
+            mCharPx = (int)(fl_width("M") + 0.5);
+            if (mCharPx < 1) mCharPx = 1;
+        }
+        return mCharPx;
+    }
+    /* Display columns of the line starting at ls (tabs expanded, UTF-8
+     * continuation bytes not counted). */
+    int lineCols(int ls) const
+    {
+        int col = 0, n = mTextBuf->length();
+        for (; ls < n; ls++) {
+            unsigned char c = (unsigned char)mTextBuf->byte_at(ls);
+            if (c == '\n') break;
+            if (c == '\t') col += codeIndent - col % codeIndent;
+            else if ((c & 0xC0) != 0x80) col++;
+        }
+        return col;
+    }
+    void rescanLongest()
+    {
+        int p = 0, n = mTextBuf->length();
+        mMaxCols = 0;
+        while (p <= n) {
+            int c = lineCols(p);
+            if (c > mMaxCols) mMaxCols = c;
+            p = mTextBuf->line_end(p) + 1;
+        }
+    }
+    void trackLongest(int pos, int nInserted, int nDeleted, const char *deleted)
+    {
+        int old = mMaxCols, stale = 0, ls, end;
+        if (nDeleted > 0) {
+            if (!deleted || memchr(deleted, '\n', nDeleted)) {
+                stale = 1;                     /* whole lines went: maybe the longest */
+            } else {
+                /* one line got shorter -- by at most this many columns */
+                int k, lost = 0;
+                for (k = 0; k < nDeleted; k++)
+                    lost += (deleted[k] == '\t') ? codeIndent : 1;
+                if (lineCols(mTextBuf->line_start(pos)) + lost >= mMaxCols) stale = 1;
+            }
+        }
+        if (stale) {
+            rescanLongest();
+        } else if (nInserted > 0) {
+            ls  = mTextBuf->line_start(pos);
+            end = mTextBuf->line_end(pos + nInserted);
+            while (ls <= end) {
+                int c = lineCols(ls);
+                if (c > mMaxCols) mMaxCols = c;
+                ls = mTextBuf->line_end(ls) + 1;
+            }
+        }
+        /* Let FLTK re-decide the scrollbar and its range. resize() is what
+         * Fl_Text_Display itself calls after edits that change the layout. */
+        if (mMaxCols != old) resize(x(), y(), w(), h());
     }
 
     void styleUpdate(int pos, int nInserted, int nDeleted)

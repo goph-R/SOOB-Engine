@@ -347,6 +347,13 @@ static void cbOpen(Fl_Widget *, void *)
 
 static void cbSave  (Fl_Widget *, void *) { saveDoc(currentIndex(), 0); }
 static void cbSaveAs(Fl_Widget *, void *) { saveDoc(currentIndex(), 1); }
+/* A tab's X / middle-click: close that document (not necessarily the active
+ * one). closeDoc() prompts for unsaved changes. */
+static void cbTabClose(Fl_Widget *w, void *)
+{
+    closeDoc(docIndexOf(w));
+}
+
 static void cbClose (Fl_Widget *, void *)
 {
     int i = currentIndex();
@@ -548,6 +555,8 @@ static void openFindWindow(int withReplace)
         gFindWin = new Fl_Double_Window(380, 150, "Find / Replace");
         gFindWin->begin();
         gFindIn  = new Fl_Input(75, 10, 290, 24, "Find:");
+        gFindIn->when(FL_WHEN_ENTER_KEY_ALWAYS);   /* Enter = Find Next */
+        gFindIn->callback(cbFindNext);
         gReplIn  = new Fl_Input(75, 40, 290, 24, "Replace:");
         gCaseChk = new Fl_Check_Button(75, 68, 110, 22, "Match case");
         gWrapChk = new Fl_Check_Button(190, 68, 110, 22, "Wrap around");
@@ -714,6 +723,8 @@ int main(int argc, char **argv)
         gTabs->color(CODE_COL_TABROW);
         gTabs->selection_color(CODE_COL_BG);
         gTabs->labelcolor(CODE_COL_FG);
+        gTabs->firstTabAt(codeGutterWidth());  /* tabs start where the gutter ends */
+        gTabs->closeCallback(cbTabClose, 0);
         gTabs->end();
     }
     gWin->end();

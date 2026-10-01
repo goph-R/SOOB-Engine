@@ -377,6 +377,41 @@ top-line comparison is the second belt: it catches edits that renumber lines
 `redraw()` after changing them. Setting them once at construction, as
 `editor/edit_code.h` does, is unaffected.
 
+**Known gap, handled outside FLTK:** in a document shorter than the view, Enter
+or Backspace adds or removes a line number without moving the top line, so this
+gate alone leaves the margin stale. `CodeEditor::draw()` (`editor/edit_code.h`)
+also repaints the margin whenever `mNBufferLines` changes.
+
+## Local FLTK patch: whole-buffer longest line (horizontal scrollbar)
+
+**Re-apply if FLTK is ever upgraded.** Stock `Fl_Text_Display` sizes the
+horizontal scrollbar from `longest_vline()`, the longest *visible* line, and
+`resize()` shows the scrollbar whenever the vertical one is visible (to avoid a
+"bounce" as long lines scroll in and out of view). So any file taller than the
+window got a horizontal scrollbar, and its range jumped while scrolling.
+
+The patch adds a global hook, declared at the end of `FL/Fl_Text_Display.H`:
+
+```c
+extern FL_EXPORT int (*fl_text_display_longest_line)(const Fl_Text_Display *d);
+```
+
+When it is set and returns `>= 0` (pixels), `longest_vline()` returns that
+instead of measuring the visible lines, and `resize()` shows the horizontal
+scrollbar only when that width exceeds the text area. Returning `-1` keeps the
+stock behaviour for that display. It is a plain global, not a member, so
+`sizeof(Fl_Text_Display)` and the ABI are unchanged — but the library must still
+be rebuilt (an old `libfltk.a` fails to link with an undefined
+`fl_text_display_longest_line`). To rebuild only this file: on Win98 delete
+`vendor\fltk-1.3\FL\lib\o\Fl_Text_Display.o` and `lib\fltkok.tag`, then run
+`fltk98`.
+
+`CodeEditor` (`editor/edit_code.h`) supplies the hook. The code font is
+monospaced, so the longest line is a column count times one cell width; it is
+kept up to date incrementally from the buffer's modify callback (inserts measure
+only the touched lines, a delete rescans only when it could have shortened the
+longest line), and returns `-1` while word wrap is on.
+
 ## Local FLTK patch: GL device context (defensive)
 
 `vendor/fltk-1.3/FL/src/Fl_Gl_Choice.cxx` carries a one-line fallback. It is *not*

@@ -467,7 +467,15 @@ void Fl_Text_Display::highlight_data(Fl_Text_Buffer *styleBuffer,
  \brief Find the longest line of all visible lines.
  \return the width of the longest visible line in pixels
  */
+int (*fl_text_display_longest_line)(const Fl_Text_Display *d) = 0;
+
 int Fl_Text_Display::longest_vline() const {
+  // SOOB patch: a whole-buffer answer, if the application supplies one. The
+  // visible-lines measure below makes the scrollbar range jump while scrolling.
+  if (fl_text_display_longest_line) {
+    int soobLongest = fl_text_display_longest_line(this);
+    if (soobLongest >= 0) return soobLongest;
+  }
   int longest = 0;
   for (int i = 0; i < mNVisibleLines; i++)
     longest = max(longest, measure_vline(i));
@@ -622,9 +630,13 @@ void Fl_Text_Display::resize(int X, int Y, int W, int H) {
        you first see a line that is too wide in the window, but then
        don't turn it off (ie mix both of your solutions). */
 
+      // SOOB patch: with a whole-buffer longest line (fl_text_display_longest_line)
+      // there is no "bounce" to avoid, so show the scrollbar only when needed.
       if (!mHScrollBar->visible() &&
 	  scrollbar_align() & (FL_ALIGN_TOP|FL_ALIGN_BOTTOM) &&
-          (mVScrollBar->visible() || longest_vline() > text_area.w))
+          (((!fl_text_display_longest_line || fl_text_display_longest_line(this) < 0) &&
+            mVScrollBar->visible()) ||
+           longest_vline() > text_area.w))
       {
         char wrap_at_bounds = mContinuousWrap && (mWrapMarginPix<text_area.w);
         if (!wrap_at_bounds) {
