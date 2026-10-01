@@ -519,6 +519,7 @@ public:
         selection_color(CODE_COL_SEL);
         show_cursor(0);             /* FLTK's caret off -- draw() paints ours */
         mCaretOn = 0;
+        mLineNumLines = -1;
 
         linenumber_width(48 * codeFontSize / CODE_FONTSIZE);   /* 48 px at the default size */
         linenumber_font(CODE_FONT);
@@ -633,6 +634,16 @@ public:
     {
         int x;
         Fl_Text_Editor::draw();
+        /* Our Win98 patch in Fl_Text_Display::draw() repaints the line-number
+         * margin only when the top visible line changes (or on a full redraw).
+         * That misses Enter / Backspace in a document shorter than the view:
+         * a number appears or disappears with no scroll, and the margin stayed
+         * stale until the next scroll. Repaint it whenever the line count
+         * changes too -- still never on ordinary typing within a line. */
+        if (mNBufferLines != mLineNumLines) {
+            mLineNumLines = mNBufferLines;
+            draw_line_numbers(true);
+        }
         caretDraw();
         if (mWrapCol <= 0) return;
 
@@ -808,6 +819,7 @@ private:
     CodeUndo mUndo;
     int mDirty;
     int mCaretOn;                 /* blink phase; drawn only while focused */
+    int mLineNumLines;            /* mNBufferLines at the last margin repaint */
 
     static void staticModifyCb(int pos, int nInserted, int nDeleted,
                                int nRestyled, const char *deletedText, void *arg)
