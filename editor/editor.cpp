@@ -1808,7 +1808,7 @@ int main(int argc, char **argv)
 
     /* Menu bar. Child widget coords are absolute (window space), so the toolbar
        and everything below it are offset by the menu/toolbar heights. */
-    Fl_Menu_Bar *menu = new Fl_Menu_Bar(0, 0, W, MB);
+    Fl_Menu_Bar *menu = new EditMenuBar(0, 0, W, MB);
 
     /* Toolbar: select-mode radio buttons, icons from editor/icons/*.xpm.
        FL_RADIO_BUTTON gives one-lit-at-a-time behaviour for free. */
@@ -2075,6 +2075,12 @@ int main(int argc, char **argv)
     menu->add("Mesh/Merge Verts",     'm',       menuMergeCb,    view);
     menu->add("Mesh/Delete",          FL_Delete, menuDeleteCb,   view);
     editMenuPad(menu);                     /* last: add() may reallocate the items */
+    /* Office 97 look, the same as SOOB-Code's: a 1px white / dark gray band,
+       the open title pushed in with a 1px border, 3D-framed drop-downs with
+       blue highlights, 11px labels. After the add()s for the same reason as
+       editMenuPad, and after editDpiScaleTree() is harmless -- textsize() is
+       not geometry, so the tree walk never touched it. */
+    editMenuBarStyle(menu, editDpi(11));
 
     win->callback(winCloseCb);             /* confirm on the window close button too */
 
