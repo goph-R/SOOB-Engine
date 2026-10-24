@@ -11,7 +11,10 @@ The hard targets that shape every feature below:
   1.9.563, all the way up to modern Linux/Windows.
 - **GPU floor: GeForce 4 MX 440 32 MB.** DX7 class, 2 TMUs, GL 1.3
   + `GL_ARB_multitexture` + `GL_ARB_texture_env_combine`. No
-  programmable shaders, ever.
+  programmable shaders, ever. Untested since the reference card died
+  on 2026-10-24 — the bench cards (FX 5200, Radeon 9200) both sit
+  above the floor, so it has to be held by reading GL calls. See
+  CLAUDE.md.
 - Single-translation-unit C++ (no C++11), header-only modules. The
   three Bullet unity files and the Lua unity file are the only other
   TUs.

@@ -8,6 +8,8 @@ SOOB-Engine is a small FPS engine targeting the full span from **Windows 98** (D
 
 **Minimum GPU: GeForce 4 MX 440 32MB.** DX7-class, 2 TMUs, 32-bit color, GL 1.3 + `GL_ARB_multitexture` + `GL_ARB_texture_env_combine`, no programmable shaders, no dependent texture reads, no 3 TMUs. Render features must work within this envelope — if a technique wants a 3rd texture unit, split it into multiple passes instead.
 
+**The floor is no longer testable — it is a design constraint, not a verified one.** The reference MX 440 died on 2026-10-24. The remaining Win98 AGP cards are a GeForce FX 5200 (DX9, PS 2.0) and the Radeon 9200 in the PII 350 (DX8.1, PS 1.4); both expose more than two texture units per pass, so a render path that quietly needs a 3rd TMU will run clean on the bench and still violate the envelope. Verify new render work by reading the GL calls — count the texture units a pass binds — not by observing that it renders on the FX 5200 or the 9200. If a feature genuinely cannot fit in two units, say so and let Gabor decide whether to lower the floor; do not silently assume the hardware in reach is the target. One upside: the 9200 is the project's first non-NVIDIA test card, so it covers the `texture_env_combine` and per-frame `glTexSubImage2D` lightmap paths against a second vendor's driver for the first time.
+
 ## Build commands
 
 There are **four** independent build systems, each for a different target. They all compile `main.cpp` + Bullet, but differ in compiler/toolchain/include paths.
