@@ -2,7 +2,7 @@
 #define SCRIPT_EXT_H
 
 /*
- * SDLFun-specific Lua bindings layered on top of the shared SOOB-Core
+ * SOOB-Engine-specific Lua bindings layered on top of the shared SOOB-Core
  * script.h. The engine doesn't know about the entity system, so any
  * binding that needs an EntityList lives here.
  *
@@ -34,7 +34,7 @@ static int scrEntActivateExt(lua_State *L)
     return 0;
 }
 
-/* Register SDLFun's extra bindings on top of an already-initialized
+/* Register SOOB-Engine's extra bindings on top of an already-initialized
    ScriptSystem. Call once after scriptInit. */
 static void scriptExtRegister(ScriptSystem *s)
 {
@@ -42,7 +42,7 @@ static void scriptExtRegister(ScriptSystem *s)
 }
 
 /* Execute the console's command buffer as a Lua chunk. Used by console.h
-   on Enter — bridges SDLFun's dev console to the engine's Lua runtime.
+   on Enter — bridges SOOB-Engine's dev console to the engine's Lua runtime.
    Find5 doesn't have a dev console so this lives here, not in SOOB-Core.
    scrTraceback comes from script.h (same TU; static functions are visible
    between headers that get textually included together). */

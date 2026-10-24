@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-echo === SDLFun Win98/Dev-C++ Build ===
+echo === SOOB-Engine Win98/Dev-C++ Build ===
 echo.
 
 REM ----------------------------------------------------------------
@@ -96,7 +96,7 @@ REM ----------------------------------------------------------------
 REM  Link
 REM ----------------------------------------------------------------
 echo Linking...
-C:\Dev-Cpp\bin\g++.exe %OBJDIR%\main.o %OBJDIR%\bl.o %OBJDIR%\bc.o %OBJDIR%\bd.o %OBJDIR%\lua.o %OBJDIR%\vorbis.o -o SDLFun.exe -L%ENGINE%\vendor\lib -lmingw32 -lSDLmain -lSDL -lopengl32 -lOpenAL32
+C:\Dev-Cpp\bin\g++.exe %OBJDIR%\main.o %OBJDIR%\bl.o %OBJDIR%\bc.o %OBJDIR%\bd.o %OBJDIR%\lua.o %OBJDIR%\vorbis.o -o SOOB.exe -L%ENGINE%\vendor\lib -lmingw32 -lSDLmain -lSDL -lopengl32 -lOpenAL32
 if errorlevel 1 goto error
 
 REM ----------------------------------------------------------------
@@ -108,7 +108,7 @@ if not exist scripts\engine mkdir scripts\engine
 copy /Y %ENGINE%\scripts\engine\*.lua scripts\engine\ >nul
 
 echo.
-echo === Build successful! Run SDLFun.exe ===
+echo === Build successful! Run SOOB.exe ===
 echo Make sure OpenAL32.dll is next to the exe or in the system directory.
 goto end
 

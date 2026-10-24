@@ -2,7 +2,7 @@
 #define APP_EXT_H
 
 /*
- * SDLFun-specific Lua bindings layered on top of menu.h's AppState.
+ * SOOB-Engine-specific Lua bindings layered on top of menu.h's AppState.
  * Splits from script_ext.h because these bindings need the full
  * AppState definition, which lives in menu.h — included AFTER game.h
  * (which in turn references script_ext.h's scriptExtSetEntities).

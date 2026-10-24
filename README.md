@@ -2,7 +2,7 @@
 
 A small FPS engine targeting everything from Windows 98 (Pentium 4, SDL 1.2, fixed-function OpenGL) through modern Linux and Windows. Bullet Physics, OpenAL Soft, header-only modules, no shaders.
 
-The name is an acronym for the four foundation libraries the engine is built on: **S**DL + **O**penGL + **O**penAL + **B**ullet. (Working title was *SDLFun* — the binaries and the in-tree level still carry that name.)
+The name is an acronym for the four foundation libraries the engine is built on: **S**DL + **O**penGL + **O**penAL + **B**ullet. (Working title was *SDLFun*, now fully retired. The built binaries are `SOOB.exe` / `SOOB_w10.exe` / `soob` — kept inside 8.3 so Win98's COMMAND.COM can launch them without a `~1` alias.)
 
 ![SOOB Engine running on Windows 10](docs/screenshot.jpg)
 
@@ -21,16 +21,16 @@ Win98/
 git clone git@github.com:goph-R/SOOB-Core.git
 ```
 
-Build scripts add `-I../SOOB-Core/` so `#include "script.h"` etc. resolve into the shared engine. Engine-side Lua modules (e.g. `engine.scene`) are copied next to the .exe at build time. SDLFun itself owns only the 3D-specific code (Bullet wrapper, `obj_loader.h`, `iqm.h`, `entity.h`, `physics.h`, `nav.h`, `flashlight.h`, `game.h`, `console.h`).
+Build scripts add `-I../SOOB-Core/` so `#include "script.h"` etc. resolve into the shared engine. Engine-side Lua modules (e.g. `engine.scene`) are copied next to the .exe at build time. SOOB-Engine itself owns only the 3D-specific code (Bullet wrapper, `obj_loader.h`, `iqm.h`, `entity.h`, `physics.h`, `nav.h`, `flashlight.h`, `game.h`, `console.h`).
 
 ## Building
 
 See `CLAUDE.md` for the full build matrix and toolchain details.
 
 Quick reference:
-- **Linux**: `make` (needs `libsdl1.2-dev`, `libopenal-dev`) → `sdlfun`
-- **Windows 98 / Dev-C++**: `build.bat` → `SDLFun.exe`
-- **Windows 10 / portable MinGW**: `build_win10.bat` → `SDLFun_w10.exe`
+- **Linux**: `make` (needs `libsdl1.2-dev`, `libopenal-dev`) → `soob`
+- **Windows 98 / Dev-C++**: `build.bat` → `SOOB.exe`
+- **Windows 10 / portable MinGW**: `build_win10.bat` → `SOOB_w10.exe`
 - **CMake**: `mkdir build && cd build && cmake .. && make`
 
 ## Menu + scripting

@@ -1,4 +1,4 @@
--- App-level entry script for SDLFun.
+-- App-level entry script for SOOB-Engine.
 --
 -- Loaded once at boot (main.cpp's scriptRunFile, after assets.lua has
 -- registered fonts/textures/etc.). Top-level code runs immediately —
@@ -31,7 +31,7 @@ scene.push(menu.mainMenu())
 -- the welcome-message + sound here so the existing demo behavior
 -- (intro chirp, ambient track) still fires for each session.
 function onStart()
-    uiShowMessage("Welcome to SDLFun", 3)
+    uiShowMessage("Welcome to SOOB-Engine", 3)
     soundPlay("jump")
     audio.play("arriving")          -- crossfades over the menu's title track
 end

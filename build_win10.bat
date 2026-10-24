@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-echo === SDLFun Win10 MinGW Build ===
+echo === SOOB-Engine Win10 MinGW Build ===
 echo.
 
 REM ----------------------------------------------------------------
@@ -108,7 +108,7 @@ REM ----------------------------------------------------------------
 REM  Link
 REM ----------------------------------------------------------------
 echo Linking...
-%GPP% %OBJDIR%\main.o %OBJDIR%\sdl_main.o %OBJDIR%\bl_w10.o %OBJDIR%\bc_w10.o %OBJDIR%\bd_w10.o %OBJDIR%\lua_w10.o %OBJDIR%\vorbis_w10.o -o SDLFun_w10.exe -L%ENGINE%\vendor_win10\lib -lmingw32 -lSDL -lopengl32 -lOpenAL32 -static-libgcc -static-libstdc++
+%GPP% %OBJDIR%\main.o %OBJDIR%\sdl_main.o %OBJDIR%\bl_w10.o %OBJDIR%\bc_w10.o %OBJDIR%\bd_w10.o %OBJDIR%\lua_w10.o %OBJDIR%\vorbis_w10.o -o SOOB_w10.exe -L%ENGINE%\vendor_win10\lib -lmingw32 -lSDL -lopengl32 -lOpenAL32 -static-libgcc -static-libstdc++
 if errorlevel 1 goto error
 
 REM ----------------------------------------------------------------
@@ -135,7 +135,7 @@ if not exist scripts\engine mkdir scripts\engine
 copy /Y %ENGINE%\scripts\engine\*.lua scripts\engine\ >nul
 
 echo.
-echo === Build successful! Run SDLFun_w10.exe ===
+echo === Build successful! Run SOOB_w10.exe ===
 goto end
 
 :error

@@ -20,7 +20,7 @@
    single translation unit. */
 static void conLogf(const char *fmt, ...);
 
-/* SDLFun keeps the original 540-unit virtual canvas (text constants in
+/* SOOB-Engine keeps the original 540-unit virtual canvas (text constants in
    menu.h / console.h / main.cpp HUD assume this height). Override before
    ui.h is parsed; engine default is 480 (which is what Find5 ships at). */
 #define UI_VIRTUAL_H 540.0f
@@ -39,11 +39,11 @@ static void conLogf(const char *fmt, ...);
 #include "path.h"
 #include "console.h"
 #include "script.h"              /* SOOB-Core */
-#include "script_ext.h"          /* SDLFun-side bindings (ent_activate) */
+#include "script_ext.h"          /* SOOB-Engine-side bindings (ent_activate) */
 #include "game.h"
 #include "game_session.h"        /* gameInit / gameFree — needs script.h above */
 #include "menu.h"
-#include "app_ext.h"             /* SDLFun-side app_* bindings (needs AppState from menu.h) */
+#include "app_ext.h"             /* SOOB-Engine-side app_* bindings (needs AppState from menu.h) */
 #include "config.h"              /* SOOB-Core */
 
 #define SAMPLE_RATE 44100
@@ -624,15 +624,15 @@ int main(int argc, char *argv[])
     AssetRegistry assetReg;
     assetRegInit(&assetReg);
     ScriptSystem script;
-    /* Per-user persistence path: AppData\SDLFun\sdlfun.dat (Windows) or
-       ~/.config/SDLFun/sdlfun.dat (Unix). Falls back to next-to-exe on
+    /* Per-user persistence path: AppData\SOOB-Engine\soob.dat (Windows) or
+       ~/.config/SOOB-Engine/soob.dat (Unix). Falls back to next-to-exe on
        Win98 (no %APPDATA%). Static so the buffer outlives script. */
     static char optPath[512];
-    scriptResolveConfigPath("SDLFun", "sdlfun.dat", optPath, sizeof(optPath));
+    scriptResolveConfigPath("SOOB-Engine", "soob.dat", optPath, sizeof(optPath));
     scriptInit(&script, &ui, &snd, &sndLib, &mus, &musLib, &assetReg,
                &app.menuTex, &blurCache, optPath);
-    scriptExtRegister(&script);          /* SDLFun-only: ent_activate, conExecute */
-    appExtRegister(&script);             /* SDLFun-only: appNewGame / continue / quit / has_game */
+    scriptExtRegister(&script);          /* SOOB-Engine-only: ent_activate, conExecute */
+    appExtRegister(&script);             /* SOOB-Engine-only: appNewGame / continue / quit / has_game */
     scriptLoadAssets(&script, "assets.lua");
     scriptInstallConsolePrint(&script);  /* override Lua print → console */
 

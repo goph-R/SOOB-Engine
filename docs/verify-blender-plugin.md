@@ -57,7 +57,7 @@ acceptance test for the v1 implementation.
 - [ ] `vn` count after export is significantly smaller than the loop
       count on axis-aligned meshes (dedup working).
 - [ ] Engine loads the exported OBJ: drop into `assets/levels/`, run
-      `SDLFun_w10.exe`, level renders correctly.
+      `SOOB_w10.exe`, level renders correctly.
 - [ ] Quads stay quads (no pre-triangulation); engine fan-triangulates
       on load without complaints.
 - [ ] Object with negative scale exports correctly (no inverted
@@ -170,10 +170,10 @@ behaves identically to the in-tree run.
    `C:\tmp\soob_rt\assets\levels\test_level.obj`, leave defaults
    (bake on, copy assets on).
 6. Copy SOOB's `OpenAL32.dll` + `SDL.dll` + the built
-   `SDLFun_w10.exe` into `C:\tmp\soob_rt\`, and copy `scripts/`,
+   `SOOB_w10.exe` into `C:\tmp\soob_rt\`, and copy `scripts/`,
    `assets.lua`, fonts, sounds, and music into matching
    subdirectories.
-7. Run `SDLFun_w10.exe` from `C:\tmp\soob_rt\`.
+7. Run `SOOB_w10.exe` from `C:\tmp\soob_rt\`.
 
 ### Pass criteria
 

@@ -1,7 +1,7 @@
 # Build output
 *.o
 *.exe
-sdlfun
+soob
 soob_editor
 build/
 raw/obj/
@@ -18,7 +18,7 @@ build_fltk_output.txt
 
 # Runtime + editor output written next to the exe. Anchored to the repo root
 # so they never shadow the tracked level data under assets/levels/.
-/sdlfun.dat
+/soob.dat
 /level.obj
 /level.mtl
 /level.lvl

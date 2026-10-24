@@ -148,7 +148,7 @@ Deliberately out of scope for v1:
 
 ```lua
 function on_start()
-    ui_show_message("Welcome to SDLFun", 3)
+    ui_show_message("Welcome to SOOB-Engine", 3)
     snd_play("gunshot")
     ent_activate("intro_door")   -- opens a door tagged intro_door in .ent
 end

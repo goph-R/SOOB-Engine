@@ -1,7 +1,7 @@
 # Makefile for Linux - FPS Demo
 # Requires libsdl1.2-dev, libopenal-dev.
 CPP = g++
-BIN = sdlfun
+BIN = soob
 
 # Shared engine (2D / audio / scripting) lives in ../SOOB-Core/.
 # Bullet stays here — it's 3D-only and unique to the FPS demo.

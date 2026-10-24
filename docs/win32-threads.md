@@ -4,7 +4,7 @@
 
 The default winlibs MinGW we vendor today is the **posix-dwarf** variant,
 which pulls in `libwinpthread-1.dll` as a runtime dependency. That DLL
-ships next to `SDLFun_w10.exe` and is one of the files Windows Defender
+ships next to `SOOB_w10.exe` and is one of the files Windows Defender
 most commonly false-positives on MinGW-built distributions (same family
 that ate `libintl-8.dll` during dev).
 
@@ -94,7 +94,7 @@ Once the new toolchain builds cleanly:
 
    …and delete it.
 
-3. Run `SDLFun_w10.exe`. If Windows complains about a missing DLL,
+3. Run `SOOB_w10.exe`. If Windows complains about a missing DLL,
    check which one and decide case-by-case (should not happen with
    `-static-libgcc -static-libstdc++` already in the link line plus
    the win32-threads runtime). If it runs, you're done — the shipped

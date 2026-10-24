@@ -1,4 +1,4 @@
--- Main-menu / options / confirm-dialog scenes for SDLFun.
+-- Main-menu / options / confirm-dialog scenes for SOOB-Engine.
 --
 -- Each constructor returns a "scene" table (see engine/scene.lua) whose
 -- widgets live inside a `root` panel. engine.scene's dispatchers auto-
@@ -20,7 +20,7 @@ local M = {}
 
 -- ---- Layout constants ---------------------------------------------------
 -- Mirrors menu.h's old MENU_* constants. Distances are in virtual-canvas
--- units; SDLFun's canvas is 540 tall (set in main.cpp before including
+-- units; SOOB-Engine's canvas is 540 tall (set in main.cpp before including
 -- ui.h).
 local PAD       = 30
 local BTN_W     = 190
@@ -172,7 +172,7 @@ end
 --   live whenever Music is on.
 -- - "Player name" LineEdit persists the typed text via optSet.
 --
--- Options are saved to sdlfun.dat when the user presses BACK / Esc /
+-- Options are saved to soob.dat when the user presses BACK / Esc /
 -- Backspace; onChange runs only in-memory + applies the live audio
 -- effect so dragging the slider doesn't thrash the disk.
 

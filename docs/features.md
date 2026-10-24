@@ -1,4 +1,4 @@
-# SDLFun Engine Features
+# SOOB-Engine Features
 
 What the current engine can do, by subsystem. This is the human-readable
 companion to `CLAUDE.md` — that file optimizes for "what does an AI
@@ -24,13 +24,13 @@ Four build systems — pick the one matching your toolchain:
 
 | Target | Command | Output |
 |---|---|---|
-| Linux | `make` (needs `libsdl1.2-dev`, `libopenal-dev`) | `sdlfun` |
-| Windows 98 / Dev-C++ | `build.bat` | `SDLFun.exe` |
-| Windows 10 / portable WinLibs MinGW | `build_win10.bat` | `SDLFun_w10.exe` |
-| CMake | `mkdir build && cd build && cmake .. && make` | `SDLFun` |
+| Linux | `make` (needs `libsdl1.2-dev`, `libopenal-dev`) | `soob` |
+| Windows 98 / Dev-C++ | `build.bat` | `SOOB.exe` |
+| Windows 10 / portable WinLibs MinGW | `build_win10.bat` | `SOOB_w10.exe` |
+| CMake | `mkdir build && cd build && cmake .. && make` | `SOOB` |
 
 The exe runs from the repo root and reads everything under `assets/`
-as relative paths. `cd build && ./SDLFun` will fail to find assets.
+as relative paths. `cd build && ./SOOB` will fail to find assets.
 
 CLI flags: `-w <px>`, `-h <px>`, `-fullscreen`. Anything unrecognized is
 ignored.

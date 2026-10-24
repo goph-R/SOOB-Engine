@@ -1,6 +1,6 @@
 # Level Design Guide (Blender)
 
-How to create levels with diffuse textures and baked lightmaps for the SDLFun FPS engine.
+How to create levels with diffuse textures and baked lightmaps for the SOOB-Engine FPS engine.
 
 ## Prerequisites
 
@@ -132,7 +132,7 @@ When using multiple materials, bake a separate lightmap for each material/sector
    - Forward: `-Z Forward`
    - Up: `Y Up`
    - Uncheck: `Write Materials` (we handle textures ourselves)
-4. Save as `test_level.obj` (or your level name) in the SDLFun folder
+4. Save as `test_level.obj` (or your level name) in the SOOB-Engine folder
 
 ### Multi-Material Export
 
@@ -145,7 +145,7 @@ When using multiple materials, bake a separate lightmap for each material/sector
    - **Check: `Write Materials`** (enables mtllib/usemtl in the OBJ)
    - Forward: `-Z Forward`
    - Up: `Y Up`
-4. Save as `test_level.obj` in the SDLFun folder
+4. Save as `test_level.obj` in the SOOB-Engine folder
 5. Edit the generated `.mtl` file to add engine-specific properties:
 
 ```

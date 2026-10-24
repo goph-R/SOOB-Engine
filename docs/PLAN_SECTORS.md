@@ -95,9 +95,9 @@ Replace:
 
 ## Phase 2: Blender Export Plugin
 
-### Single file: `sdlfun_export.py` (~400-600 lines Python)
+### Single file: `soob_export.py` (~400-600 lines Python)
 
-Registers under `File > Export > SDLFun Level (.obj)`.
+Registers under `File > Export > SOOB Level (.obj)`.
 
 ### Export dialog options:
 - Lightmap resolution: 128 / 256 / 512 (default 256)
@@ -142,8 +142,8 @@ Update `leveldes.md`:
 3. `main.cpp`: computeTilingUV + renderLevelSectored + wiring + backward compat
 4. Test with hand-crafted 2-sector OBJ+MTL (two rooms, different textures)
 5. Verify backward compat with original test_level.obj (no mtllib)
-6. `sdlfun_export.py`: OBJ+MTL export (no baking yet)
-7. `sdlfun_export.py`: Per-sector lightmap baking
+6. `soob_export.py`: OBJ+MTL export (no baking yet)
+7. `soob_export.py`: Per-sector lightmap baking
 8. `leveldes.md`: Updated docs
 
 ## Files Modified
@@ -154,7 +154,7 @@ Update `leveldes.md`:
 
 ## New Files
 
-- `sdlfun_export.py` -- Blender addon
+- `soob_export.py` -- Blender addon
 
 ## Verification
 

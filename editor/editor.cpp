@@ -2,7 +2,7 @@
  * SOOB Level Editor — skeleton
  * ============================
  *
- * A native Win98-capable level editor for the SOOB / SDLFun engine, built on
+ * A native Win98-capable level editor for the SOOB-Engine, built on
  * FLTK 1.3 (fixed-function GL, no C++11, no shaders — same envelope as the
  * game). It renders levels through the EXACT engine code the game ships:
  *

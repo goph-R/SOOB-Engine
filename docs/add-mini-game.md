@@ -1,4 +1,4 @@
-# Adding a mini-game inside SDLFun
+# Adding a mini-game inside SOOB-Engine
 
 A thought-experiment design doc: what it would take to push something
 like Find5 (the 2D spot-the-difference game) on top of the 3D FPS as a
@@ -17,7 +17,7 @@ for; the rest is a few C-side glue points and a Find5-side refactor.
   consume SOOB-Core. Find5's bindings (`draw_region`, `draw_text`,
   `draw_ellipse`, `draw_quad`, `draw_bg`, `draw_blur`, `view_size`,
   `opt_get/set/save/load`, `mouse_pos`, `key_down`, sound + music)
-  are also available inside SDLFun. No engine work needed on this
+  are also available inside SOOB-Engine. No engine work needed on this
   axis.
 
 - **Scene stack is the host mechanism.** A mini-game is just a scene
@@ -30,7 +30,7 @@ for; the rest is a few C-side glue points and a Find5-side refactor.
   alternatively the mini-game can load its own bundle lazily — both
   approaches are tractable.
 
-## What needs extending in SDLFun
+## What needs extending in SOOB-Engine
 
 ### 1. MODE_GAME has to dispatch to Lua scenes too
 
@@ -72,10 +72,10 @@ dispatcher would do it.
 ### 2. Asset namespacing / lazy loading
 
 Find5 declares regions like `image_1a`, `image_1b`, `star`,
-`pause_button_up`. SDLFun's `assets.lua` doesn't have those today.
+`pause_button_up`. SOOB-Engine's `assets.lua` doesn't have those today.
 Three options:
 
-- **Inline merge.** Add Find5's textures / regions to SDLFun's
+- **Inline merge.** Add Find5's textures / regions to SOOB-Engine's
   `assets.lua` (optionally under a `find5_` prefix to avoid name
   collisions later). Simple, but everything loads at boot — fine for
   one mini-game, gets heavy if there are several.
@@ -116,7 +116,7 @@ Find5's `scripts/main.lua` today defines globals (`on_update`,
 state machine. To embed:
 
 ```lua
--- scripts/minigames/find5.lua  (inside SDLFun)
+-- scripts/minigames/find5.lua  (inside SOOB-Engine)
 local M = {}
 
 function M.new()
@@ -143,7 +143,7 @@ discrete handler functions, just at file scope.
 
 ### Canvas size
 
-Find5 designs for a 480-tall canvas; SDLFun runs 540. Two paths:
+Find5 designs for a 480-tall canvas; SOOB-Engine runs 540. Two paths:
 
 - **Accept slight layout drift.** Find5's UI already calls
   `view_size()` per frame for anchoring, so headers and footers
@@ -155,9 +155,9 @@ Find5 designs for a 480-tall canvas; SDLFun runs 540. Two paths:
 
 ### Persistence
 
-Find5 writes to `find5.dat` via `opt_save`. Inside SDLFun the engine's
-opt file is `sdlfun.dat` (set in `scriptInit`'s `optFile` param).
-Find5's `opt_set("hs_portraits", …)` will write into SDLFun's opt
+Find5 writes to `find5.dat` via `opt_save`. Inside SOOB-Engine the engine's
+opt file is `soob.dat` (set in `scriptInit`'s `optFile` param).
+Find5's `opt_set("hs_portraits", …)` will write into SOOB-Engine's opt
 store — no file conflict, just key namespacing. To keep things tidy,
 either:
 

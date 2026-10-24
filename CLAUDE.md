@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-SDLFun is a small FPS engine targeting the full span from **Windows 98** (Dev-C++ / MinGW 3.4, SDL 1.2, fixed-function OpenGL, OpenAL Soft 1.9.563) up to modern Linux/Windows. The "runs on a Pentium 4" constraint is deliberate and drives most architectural decisions — no C++11 features, no shaders, no modern GL, header-only modules, static-libgcc linking for the Win10 build.
+SOOB-Engine is a small FPS engine targeting the full span from **Windows 98** (Dev-C++ / MinGW 3.4, SDL 1.2, fixed-function OpenGL, OpenAL Soft 1.9.563) up to modern Linux/Windows. The "runs on a Pentium 4" constraint is deliberate and drives most architectural decisions — no C++11 features, no shaders, no modern GL, header-only modules, static-libgcc linking for the Win10 build.
 
 **Minimum GPU: GeForce 4 MX 440 32MB.** DX7-class, 2 TMUs, 32-bit color, GL 1.3 + `GL_ARB_multitexture` + `GL_ARB_texture_env_combine`, no programmable shaders, no dependent texture reads, no 3 TMUs. Render features must work within this envelope — if a technique wants a 3rd texture unit, split it into multiple passes instead.
 
@@ -14,10 +14,10 @@ There are **four** independent build systems, each for a different target. They 
 
 | Target | Command | Output |
 |---|---|---|
-| Linux (system SDL) | `make` (needs `libsdl1.2-dev`, `libopenal-dev`) | `sdlfun` |
-| Windows 98 / Dev-C++ | `build.bat` (uses `C:\Dev-Cpp\bin\g++.exe`) | `SDLFun.exe` |
-| Windows 10 (portable WinLibs MinGW in `vendor_win10/`) | `build_win10.bat` | `SDLFun_w10.exe` |
-| CMake | `mkdir build && cd build && cmake .. && make` — add `-DUSE_VENDOR_SDL=ON` to use vendored SDL | `SDLFun` |
+| Linux (system SDL) | `make` (needs `libsdl1.2-dev`, `libopenal-dev`) | `soob` |
+| Windows 98 / Dev-C++ | `build.bat` (uses `C:\Dev-Cpp\bin\g++.exe`) | `SOOB.exe` |
+| Windows 10 (portable WinLibs MinGW in `vendor_win10/`) | `build_win10.bat` | `SOOB_w10.exe` |
+| CMake | `mkdir build && cd build && cmake .. && make` — add `-DUSE_VENDOR_SDL=ON` to use vendored SDL | `SOOB` |
 
 Audio is OpenAL 1.1 / OpenAL Soft via the header-only wrapper in `sound.h`. The repo vendors `OpenAL32.dll` (1.25.1, used on Win10) and `OpenAL32-win98.dll` (1.9.563, the only release tested working on Win98 — rename to `OpenAL32.dll` before running on a Win98 target). Migration history in `docs/plan-openal.md`.
 
@@ -31,7 +31,7 @@ There are no tests and no lint step.
 
 ## Running
 
-Run the built executable from the repo root — it reads everything under `assets/` (levels, models, textures, sounds) as **relative paths**. `cd build && ./SDLFun` will fail to find assets.
+Run the built executable from the repo root — it reads everything under `assets/` (levels, models, textures, sounds) as **relative paths**. `cd build && ./SOOB` will fail to find assets.
 
 Flow: boot lands on the **main menu** (mouse free). Buttons CONTINUE / NEW GAME / OPTIONS / EXIT navigate with Up/Down + Enter or mouse. CONTINUE is disabled until a game has been started at least once in this session. NEW GAME tears down any prior session and inits a fresh one. In-game **Esc returns to the menu** (game state preserved); CONTINUE is then enabled. EXIT opens a confirm dialog (OK/Cancel, Left/Right to switch, Enter fires, Esc cancels).
 

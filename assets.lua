@@ -1,4 +1,4 @@
--- Asset manifest for SDLFun.
+-- Asset manifest for SOOB-Engine.
 --
 -- Lists logical name -> file path for every game asset. Loaded at
 -- startup by scriptLoadAssets (script.h), which walks the tables and

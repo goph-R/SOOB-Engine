@@ -464,15 +464,15 @@ end
 - Entity trigger checks: if `script` key present, call Lua function instead of entActivate
 - Keep it optional: if Lua is not compiled in, triggers fall back to name/group activation
 
-## Blender Export Plugin (sdlfun_export.py)
+## Blender Export Plugin (soob_export.py)
 
 ### Architecture
 
-Single-file Blender addon (~600-800 lines Python), registers under `File > Export > SDLFun Level`.
+Single-file Blender addon (~600-800 lines Python), registers under `File > Export > SOOB Level`.
 
 ### Entity Identification in Blender
 
-Objects are classified by a custom property `sdlfun_type`:
+Objects are classified by a custom property `soob_type`:
 - **Not set** = level geometry (joined into the OBJ)
 - **`player`** = player spawn (Empty object, arrows display)
 - **`decoration`** = static or animated prop
@@ -485,10 +485,10 @@ Objects are classified by a custom property `sdlfun_type`:
 
 ### Custom Properties Panel
 
-The plugin adds a panel in **Object Properties > SDLFun Entity**:
+The plugin adds a panel in **Object Properties > SOOB Entity**:
 
 ```
-[ SDLFun Entity ]
+[ SOOB Entity ]
   Type:         [Decoration ▼]      -- dropdown: player/decoration/item/enemy/...
   Name:         [barrel_01   ]      -- auto-filled from object name
   Group:        [props        ]     -- optional group for batch activation
@@ -539,11 +539,11 @@ The plugin registers custom draw handlers for visual feedback in the 3D viewport
 - **Doors**: purple wireframe box with arrow showing open direction
 - **Switches**: cyan wireframe circle
 
-All overlays are toggled via `View > SDLFun Overlays` or a button in the N-panel.
+All overlays are toggled via `View > SOOB Overlays` or a button in the N-panel.
 
 ### Export Pipeline (one-click)
 
-`File > Export > SDLFun Level (.obj)`:
+`File > Export > SOOB Level (.obj)`:
 
 **Dialog options:**
 - Level name (default: scene name)
@@ -557,8 +557,8 @@ All overlays are toggled via `View > SDLFun Overlays` or a button in the N-panel
 **Steps:**
 
 1. **Classify objects**:
-   - No `sdlfun_type` -> level geometry
-   - With `sdlfun_type` -> entity
+   - No `soob_type` -> level geometry
+   - With `soob_type` -> entity
    - Static decorations (`is_static=True`) -> included in lightmap bake scene
 
 2. **Prepare level geometry**:
@@ -618,8 +618,8 @@ export/
 ### Installation
 
 1. Open Blender > Edit > Preferences > Add-ons > Install
-2. Select `sdlfun_export.py`
-3. Enable "SDLFun Level Exporter"
+2. Select `soob_export.py`
+3. Enable "SOOB Level Exporter"
 4. The entity panel appears in Object Properties, export option in File > Export
 
 ## Lighting System
@@ -784,7 +784,7 @@ Working: player spawn, decoration (OBJ + IQM), item pickup, trigger volumes,
 platform movement, switch activation with name/group targeting.
 
 ### Phase D: Blender Export Plugin  <-- NEXT
-sdlfun_export.py: single-file addon (~600-800 lines).
+soob_export.py: single-file addon (~600-800 lines).
 - Custom properties panel for entity type/properties per object
 - Viewport overlays (color-coded entity visualization)
 - One-click export: OBJ+MTL + lightmap bake + .ent file + model/texture copy
